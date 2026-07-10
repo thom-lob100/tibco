@@ -28,7 +28,8 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `RvPersistentCommandQueue` | `persistent = true` command의 DB 재처리 큐 (`rv_command_queue`) |
 | `RvMessages` | `TibrvMsg` ↔ record/Map 변환, 큐 저장용 직렬화 |
 | `RendezvousProperties` | `aos.rendezvous.*` 설정 바인딩, subject/DQ 이름 조합 |
-| `SampleCommands` | **샘플** — 실제 업무 핸들러로 교체 대상 |
+| `SampleCommands` | **샘플** — 주문 처리 예제(persistent 체이닝·트랜잭션 포함), 교체 대상 |
+| `EqpCommands` | **샘플** — EAP→BOOT `EQP_STATUS` 예제: 장비마스터 조회 후 상태를 REQUEST로 변경 |
 | `DestinationSimulator` | **테스트 도구** — 상대 시스템(MESSO 등) 흉내, 기본 비활성 |
 
 ## 2. 회사(실제 TIBCO 설치 환경) 적용 체크리스트

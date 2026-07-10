@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS sample_settlement (
     order_id   VARCHAR(100) PRIMARY KEY,
     settled_at TIMESTAMP    NOT NULL
 );
+
+-- Sample equipment master read/updated by EqpCommands.eqpStatus (EQP_STATUS).
+CREATE TABLE IF NOT EXISTS eqp_master (
+    eqp_id     VARCHAR(100) NOT NULL,
+    port_id    VARCHAR(100) NOT NULL,
+    status     VARCHAR(20)  NOT NULL,
+    updated_at TIMESTAMP    NOT NULL,
+    PRIMARY KEY (eqp_id, port_id)
+);
