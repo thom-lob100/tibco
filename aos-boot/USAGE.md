@@ -258,8 +258,33 @@ java -jar aos-boot-app.jar --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.
 - FT 그룹 이름은 `AOS.<listener>.FT`로 자동 파생 (listener를 바꾸면 함께 바뀜).
 - standby는 RV에 연결은 유지하되 listener를 붙이지 않아 아무것도 소비하지 않는다.
   승격 로그: `FT 'AOS.BOOT.FT' (weight=1): ACTIVATE — starting to consume`.
-- `active-goal > 1`이면 "N개 active가 DQ로 나눠 처리 + 나머지 standby" 조합이 된다.
 - FT 미사용(기본)이면 기존 DQ 동작 그대로.
+
+### DQ vs FT 기동 명령어 비교
+
+| | DQ (기본) | FT |
+|---|---|---|
+| 켜는 방법 | 기본값 (인자 불필요) | `--aos.rendezvous.ft.enabled=true` |
+| 인스턴스별 차등 인자 | `--aos.rendezvous.dq.scheduler-weight=2/1` | `--aos.rendezvous.ft.weight=2/1` |
+| 그룹 이름 | `AOS.<listener>.DQ` (자동 파생) | `AOS.<listener>.FT` (자동 파생) |
+| weight의 의미 | **스케줄러**(분배 담당) 선출 우선순위 — 소비는 전원 | **active**(소비 담당) 선출 우선순위 — 나머지 대기 |
+| 처리 방식 | 전원 소비, 메시지당 1대 배정 | weight 상위 `active-goal`개(기본 1)만 소비 |
+| 장애 시 | 남은 멤버가 계속 처리 (스케줄러 재선출) | standby가 승격되어 소비 시작 |
+| 어울리는 서비스 | 처리량 분산이 목적인 무상태 처리 | 단독 실행이 필요한 상태ful/순서 민감 처리 |
+| 확인 로그 | `Joined DQ 'AOS.BOOT.DQ' ...` | `FT ... ACTIVATE — starting to consume` / `FT mode: standing by` |
+
+공통: `--aos.rendezvous.subject.listener=OIS`를 주면 두 그룹 이름과 subject가 함께
+바뀌고, 환경은 `--spring.profiles.active=test|qa|real`로 선택한다.
+
+**active-goal — 동시에 소비할 인스턴스 수의 상한.** `active-goal: 1`(기본)이면
+순수 active/standby, `active-goal: 2` + 인스턴스 3대면 "weight 상위 2대는 active가
+되어 DQ로 메시지를 나눠 처리하고, 3번째는 standby"가 된다. active 중 1대가 죽으면
+standby가 승격되어 항상 2대가 소비하도록 유지된다. DQ만으로는 "뜬 인스턴스 전부"가
+소비해서 소비 주체 수를 제어할 수 없는데, FT+DQ 조합은 **처리량(2대 분산)과 소비
+수 상한(정확히 2대)과 무중단 예비(hot standby)** 를 동시에 얻는 구성이다. 대상
+시스템의 동시 접속/세션 수 제한이 있거나, 예비 장비가 평소 부하를 받지 않게 하고
+싶을 때 쓴다.
+
 - persistent 큐 모니터링:
   ```sql
   SELECT status, COUNT(*) FROM rv_command_queue GROUP BY status;      -- 적체 확인
