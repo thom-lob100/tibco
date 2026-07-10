@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.p2gether.aos</groupId>
+    <artifactId>aos-boot</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>aos-boot</name>
+
+    <modules>
+        <module>aos-boot-app</module>
+    </modules>
+
+    <properties>
+        <java.version>25</java.version>
+        <!--
+            tibrvj.jar is proprietary and NOT on Maven Central. Install it once from a real
+            TIBCO Rendezvous installation:
+              mvn install:install-file -Dfile="<TIBRV_HOME>/lib/tibrvj.jar"
+                -DgroupId=com.tibco.tibrv -DartifactId=tibrvj -Dversion=8.4.5 -Dpackaging=jar
+        -->
+        <tibrv.version>8.4.5</tibrv.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.tibco.tibrv</groupId>
+                <artifactId>tibrvj</artifactId>
+                <version>${tibrv.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

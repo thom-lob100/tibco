@@ -1,0 +1,90 @@
+spring:
+  application:
+    name: aos-boot-app
+  profiles:
+    # Active profile picks the environment: test | qa | real
+    # e.g. --spring.profiles.active=qa
+    default: test
+  # Backs the durable command queue (rv_command_queue, see schema.sql).
+  # H2 file database for local runs - point at the real database in production.
+  datasource:
+    url: "jdbc:h2:file:./data/rv-command-queue"
+    username: sa
+    password: ""
+  sql:
+    init:
+      # Run schema.sql (idempotent CREATE IF NOT EXISTS) on every start; file-based
+      # H2 does not count as an embedded database, so the default would skip it.
+      mode: always
+
+aos:
+  rendezvous:
+    service: "23119"
+    network: ";239.11.19.99"
+    daemon: "tcp:7500"
+    # Sender element on outbound subjects; unset -> machine name is auto-detected.
+    # Override per instance when several run on one host,
+    # e.g. --aos.rendezvous.sender-name=EAPHOST01-2
+    # sender-name:
+    # Joined as factory.environment.send-system.sender.listener.command,
+    # e.g. P2.TEST.*.*.OIS.*  (environment comes from application-<profile>.yml)
+    subject:
+      # true prepends the reserved _LOCAL element: the subject becomes
+      # _LOCAL.P2.TEST...., delivered only within the local rvd daemon.
+      local: false
+      factory: "P2"
+      send-system: "*"
+      sender: "*"
+      # Per-service element; override at launch, e.g. --aos.rendezvous.subject.listener=OIS
+      # (this also renames the DQ below to AOS.OIS.DQ)
+      listener: "BOOT"
+      command: "*"
+    # Predefined outbound targets. Subject is composed per call as
+    # factory.environment.<send-system>.<sender>.<target listener>.<command>
+    # reusing this app's factory/environment/local settings. Per destination,
+    # send-system defaults to this app's listener element (the calling service)
+    # and sender to the machine name (see sender-name below). Connection values
+    # omitted here fall back to aos.rendezvous.service/network/daemon; values
+    # that differ per environment belong in application-<profile>.yml.
+    destinations:
+      messo:
+        listener: "MESSO"
+        service: "23121"
+        network: ";239.11.19.98"
+      # Define more targets the same way, e.g.:
+      # bill:
+      #   listener: "BILL"
+      #   service: "23122"
+    # Outbound request/reply: per-attempt reply timeout (seconds) and retries
+    # on timeout. Retries resend the SAME request - target handlers should be
+    # idempotent for retried commands.
+    request:
+      timeout: 5.0
+      retries: 2
+      backoff: 0.5
+    # Inbound @RvCommand handler retries when a handler throws. The first attempt
+    # runs in the DQ callback; retries run asynchronously on a dedicated pool
+    # (threads) so the member keeps consuming while a failed message is retried.
+    # After the last failure a {status=ERROR} reply is returned to request/reply
+    # callers.
+    handler-retry:
+      retries: 2
+      backoff: 0.5
+      threads: 2
+    # DB-backed reprocessing queue for @RvCommand(durable = true) commands:
+    # persisted before processing, retried from rv_command_queue across restarts,
+    # kept as FAILED (dead letter) after max-attempts. Failure replies {status=QUEUED}.
+    durable-queue:
+      enabled: true
+      poll-interval: 5.0
+      max-attempts: 5
+      backoff: 10.0
+      batch-size: 10
+      processing-timeout: 300.0
+    dq:
+      # All members sharing this name form one distributed queue.
+      # Derived from the listener element; can still be overridden directly.
+      name: "AOS.${aos.rendezvous.subject.listener}.DQ"
+      # Highest weight becomes the scheduler; override per instance,
+      # e.g. --aos.rendezvous.dq.scheduler-weight=2
+      scheduler-weight: 1

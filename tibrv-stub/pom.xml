@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        IN-MEMORY STUB of the TIBCO Rendezvous Java API. This is NOT the real library and contains
+        NO TIBCO code: it declares the class/method signatures that aos-boot compiles against
+        (including the CM / distributed-queue classes) backed by a JVM-LOCAL message bus (StubBus):
+        subject wildcard matching, distributed-queue round-robin delivery, and _INBOX request/reply
+        all work WITHIN one JVM, so application logic can be exercised on machines without a TIBCO
+        install. It cannot talk to a real rvd or other processes; a warning is printed on Tibrv.open.
+
+        Coordinates intentionally match the real artifact (com.tibco.tibrv:tibrvj:8.4.5) so aos-boot's
+        dependency resolves. This project is deliberately OUTSIDE the aos-boot reactor — developers with
+        a real TIBCO install must install the genuine jar under the same coordinates for real runs.
+    -->
+    <groupId>com.tibco.tibrv</groupId>
+    <artifactId>tibrvj</artifactId>
+    <version>8.4.5</version>
+    <packaging>jar</packaging>
+    <name>tibrvj (compile-only API stub)</name>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+</project>
