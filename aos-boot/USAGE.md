@@ -8,15 +8,16 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 ## 1. 전체 구조
 
 ```
-[다른 시스템]                         [이 앱 (BOOT)]
-     │  P2.TEST.*.*.BOOT.<command>        │
+[EAP 등 다른 시스템]                       [이 앱 (BOOT)]
+     │  P2.TEST.EAP.<EAP장비>.BOOT.<command>  │
      ├──────────── RV (rvd) ─────────────▶│ RendezvousSubscriber (DQ 멤버)
      │                                    │   └─ RvCommandDispatcher
      │                                    │        ├─ @RvCommand 메서드 실행
      │                                    │        ├─ 실패 시: 비동기 재시도(메모리)
      │                                    │        └─ durable: rv_command_queue(DB) 재처리
-     │  P2.TEST.BOOT.<장비>.MESSO.<command>│
+     │  P2.TEST.BOOT.<내장비>.MESSO.<command> │
      ◀──────────── RV (rvd) ──────────────┤ RendezvousPublisher (destinations)
+[MESSO]
 ```
 
 | 컴포넌트 | 역할 |
@@ -114,10 +115,18 @@ aos:
 ### Subject 구조
 
 `factory.environment.send-system.sender.listener.command` 6개 element.
+규칙은 방향과 무관하게 하나다: **3번째 = 보내는 서비스, 4번째 = 보내는 장비,
+5번째 = 받는 서비스(listener), 6번째 = command.**
 
-- **수신**: `P2.TEST.*.*.BOOT.*` — environment는 활성 profile(test/qa/real)이 결정.
-- **송신**: `P2.TEST.BOOT.<장비이름>.MESSO.<command>` — send-system=내 listener,
-  sender=장비 이름(규약), listener=상대, command=호출별 지정.
+| 방향 | subject 예 |
+|---|---|
+| EAP → BOOT (수신) | `P2.TEST.EAP.<EAP장비>.BOOT.ORDER_CANCEL` |
+| BOOT의 구독 패턴 | `P2.TEST.*.*.BOOT.*` — 3·4번째 와일드카드가 위의 `EAP.<EAP장비>` 자리 |
+| BOOT → MESSO (송신) | `P2.TEST.BOOT.<내장비>.MESSO.ORDER_SETTLED` — 자동 조합 |
+
+- environment(`TEST`/`QA`/`REAL`)는 활성 profile이 결정한다.
+- 송신 시 send-system=내 listener(BOOT), sender=내 장비 이름이 자동으로 찍힌다 —
+  EAP가 우리에게 보낼 때 `EAP.<EAP장비>`를 찍는 것과 같은 규약.
 - `subject.local=true`면 `_LOCAL.`이 앞에 붙어 로컬 rvd 안에서만 전달된다(RV 예약 기능).
 - DQ 이름은 `AOS.<listener>.DQ`로 자동 파생: `--aos.rendezvous.subject.listener=OIS`
   하나로 subject와 DQ 그룹이 함께 바뀐다.
