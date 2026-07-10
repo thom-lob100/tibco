@@ -27,7 +27,7 @@ aos:
     # e.g. --aos.rendezvous.sender-name=EAPHOST01-2
     # sender-name:
     # Joined as factory.environment.send-system.sender.listener.command,
-    # e.g. P2.TEST.*.*.OIS.*  (environment comes from application-<profile>.yml)
+    # e.g. P2.TEST.*.*.BOOT.*  (environment comes from application-<profile>.yml)
     subject:
       # true prepends the reserved _LOCAL element: the subject becomes
       # _LOCAL.P2.TEST...., delivered only within the local rvd daemon.
