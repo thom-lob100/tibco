@@ -23,7 +23,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 
 /**
- * Database-backed reprocessing queue for {@code @RvCommand(durable = true)} commands.
+ * Database-backed reprocessing queue for {@code @RvCommand(persistent = true)} commands.
  *
  * <p>The dispatcher persists the message (status PROCESSING) before the inline first
  * attempt; success deletes the row, failure parks it as PENDING with a due time. This
@@ -38,15 +38,15 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "aos.rendezvous.durable-queue.enabled", havingValue = "true", matchIfMissing = true)
-public class RvDurableCommandQueue {
+@ConditionalOnProperty(name = "aos.rendezvous.persistent-queue.enabled", havingValue = "true", matchIfMissing = true)
+public class RvPersistentCommandQueue {
 
     private final JdbcTemplate jdbc;
     private final ObjectProvider<RendezvousProperties> propertiesProvider;
     private final ObjectProvider<RvCommandDispatcher> dispatcherProvider;
     private ScheduledExecutorService poller;
 
-    public RvDurableCommandQueue(JdbcTemplate jdbc,
+    public RvPersistentCommandQueue(JdbcTemplate jdbc,
                                  ObjectProvider<RendezvousProperties> propertiesProvider,
                                  ObjectProvider<RvCommandDispatcher> dispatcherProvider) {
         this.jdbc = jdbc;
@@ -58,23 +58,23 @@ public class RvDurableCommandQueue {
     public void start() {
         long intervalMillis = (long) (config().getPollInterval() * 1000);
         poller = Executors.newSingleThreadScheduledExecutor(task -> {
-            Thread thread = new Thread(task, "rv-durable-queue");
+            Thread thread = new Thread(task, "rv-persistent-queue");
             thread.setDaemon(true);
             return thread;
         });
         poller.scheduleWithFixedDelay(this::poll, intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);
-        log.info("Durable command queue polling every {}s (max attempts {}, backoff {}s)",
+        log.info("Persistent command queue polling every {}s (max attempts {}, backoff {}s)",
                 config().getPollInterval(), config().getMaxAttempts(), config().getBackoff());
     }
 
-    /** Persists an incoming durable message as PROCESSING (the inline attempt is underway). */
+    /** Persists an incoming persistent message as PROCESSING (the inline attempt is underway). */
     public long enqueue(String command, TibrvMsg message) throws TibrvException {
         return insert(command, message, "PROCESSING");
     }
 
     /**
-     * Submits a follow-up durable command straight to the queue as PENDING (no RV round
-     * trip); the poller executes it like any other due row. Use this to chain durable
+     * Submits a follow-up persistent command straight to the queue as PENDING (no RV round
+     * trip); the poller executes it like any other due row. Use this to chain persistent
      * steps — e.g. settle once, then notify — so a failure in a later step retries only
      * that step and never re-runs the earlier ones.
      */
@@ -82,7 +82,7 @@ public class RvDurableCommandQueue {
         TibrvMsg message = RvMessages.toMsg(payload);
         message.setSendSubject(selfSubject(command));
         long id = insert(command, message, "PENDING");
-        log.info("Submitted durable command '{}' (row {})", command, id);
+        log.info("Submitted persistent command '{}' (row {})", command, id);
         return id;
     }
 
@@ -137,7 +137,7 @@ public class RvDurableCommandQueue {
                 due, abbreviate(error), now, id);
         if (updated == 1 && Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT status = 'FAILED' FROM rv_command_queue WHERE id = ?", Boolean.class, id))) {
-            log.error("Durable command row {} moved to FAILED (dead letter): {}", id, error);
+            log.error("Persistent command row {} moved to FAILED (dead letter): {}", id, error);
         }
     }
 
@@ -154,7 +154,7 @@ public class RvDurableCommandQueue {
                     Long.class, now, staleBefore, config().getBatchSize());
             due.forEach(id -> claimAndProcess(id, now, staleBefore));
         } catch (Exception exception) {
-            log.error("Durable queue poll failed", exception);
+            log.error("Persistent queue poll failed", exception);
         }
     }
 
@@ -175,19 +175,19 @@ public class RvDurableCommandQueue {
             message.setSendSubject((String) row.get("subject"));
             dispatcherProvider.getObject().invokeOnce(command, message);
             complete(id);
-            log.info("Durable command '{}' (row {}) succeeded on attempt {}/{}",
+            log.info("Persistent command '{}' (row {}) succeeded on attempt {}/{}",
                     command, id, ((Number) row.get("attempts")).intValue() + 1, row.get("max_attempts"));
         } catch (Exception exception) {
             Throwable failure = exception.getCause() != null ? exception.getCause() : exception;
-            log.warn("Durable command '{}' (row {}) failed on attempt {}/{}: {}",
+            log.warn("Persistent command '{}' (row {}) failed on attempt {}/{}: {}",
                     command, id, ((Number) row.get("attempts")).intValue() + 1,
                     row.get("max_attempts"), String.valueOf(failure));
             failAttempt(id, String.valueOf(failure));
         }
     }
 
-    private RendezvousProperties.DurableQueue config() {
-        return propertiesProvider.getObject().getDurableQueue();
+    private RendezvousProperties.PersistentQueue config() {
+        return propertiesProvider.getObject().getPersistentQueue();
     }
 
     private static String abbreviate(String error) {

@@ -1,7 +1,7 @@
 # Build output
 target/
 
-# Durable-queue local H2 database
+# Persistent-queue local H2 database
 data/
 *.mv.db
 *.trace.db

@@ -1,4 +1,4 @@
--- Durable reprocessing queue for @RvCommand(durable = true) commands.
+-- Persistent reprocessing queue for @RvCommand(persistent = true) commands.
 -- PENDING rows are picked up by the poller when next_attempt_at is due;
 -- PROCESSING rows older than the processing timeout are reclaimed (crashed worker);
 -- FAILED rows are the dead letter set - requeue manually with:

@@ -41,18 +41,18 @@ import org.springframework.util.ClassUtils;
 @Component
 public class RvCommandDispatcher implements BeanPostProcessor {
 
-    private record Handler(Object bean, Method method, boolean durable) {
+    private record Handler(Object bean, Method method, boolean persistent) {
     }
 
     private final ObjectProvider<RendezvousProperties> propertiesProvider;
-    private final ObjectProvider<RvDurableCommandQueue> durableQueueProvider;
+    private final ObjectProvider<RvPersistentCommandQueue> persistentQueueProvider;
     private final Map<String, Handler> handlers = new ConcurrentHashMap<>();
     private ScheduledExecutorService retryExecutor;
 
     public RvCommandDispatcher(ObjectProvider<RendezvousProperties> propertiesProvider,
-                               ObjectProvider<RvDurableCommandQueue> durableQueueProvider) {
+                               ObjectProvider<RvPersistentCommandQueue> persistentQueueProvider) {
         this.propertiesProvider = propertiesProvider;
-        this.durableQueueProvider = durableQueueProvider;
+        this.persistentQueueProvider = persistentQueueProvider;
     }
 
     @Override
@@ -65,7 +65,7 @@ public class RvCommandDispatcher implements BeanPostProcessor {
             validateSignature(method);
             String command = annotation.value().isEmpty()
                     ? toUpperSnake(method.getName()) : annotation.value();
-            Handler previous = handlers.putIfAbsent(command, new Handler(bean, method, annotation.durable()));
+            Handler previous = handlers.putIfAbsent(command, new Handler(bean, method, annotation.persistent()));
             if (previous != null) {
                 throw new IllegalStateException("Duplicate @RvCommand handler for '" + command
                         + "': " + previous.method() + " and " + method);
@@ -73,7 +73,7 @@ public class RvCommandDispatcher implements BeanPostProcessor {
             method.setAccessible(true);
             log.info("Registered command '{}' -> {}.{}{}", command,
                     ClassUtils.getUserClass(bean).getSimpleName(), method.getName(),
-                    annotation.durable() ? " (durable)" : "");
+                    annotation.persistent() ? " (persistent)" : "");
         }
         return bean;
     }
@@ -93,12 +93,12 @@ public class RvCommandDispatcher implements BeanPostProcessor {
             return CompletableFuture.completedFuture(
                     errorReply(command, "no handler for command '" + command + "'"));
         }
-        if (handler.durable()) {
-            CompletableFuture<Optional<TibrvMsg>> durableResult = dispatchDurable(handler, command, message);
-            if (durableResult != null) {
-                return durableResult;
+        if (handler.persistent()) {
+            CompletableFuture<Optional<TibrvMsg>> persistentResult = dispatchPersistent(handler, command, message);
+            if (persistentResult != null) {
+                return persistentResult;
             }
-            // Durable queue unavailable: fall through to the in-memory retry path.
+            // Persistent queue unavailable: fall through to the in-memory retry path.
         }
         RendezvousProperties.HandlerRetry policy = propertiesProvider.getObject().getHandlerRetry();
         int attempts = Math.max(1, policy.getRetries() + 1);
@@ -119,16 +119,16 @@ public class RvCommandDispatcher implements BeanPostProcessor {
     }
 
     /**
-     * Durable path: persist first, then attempt inline. Success deletes the row and
+     * Persistent path: persist first, then attempt inline. Success deletes the row and
      * replies normally; failure parks the row for the queue poller and immediately
      * replies {@code {status=QUEUED}} so callers know the message is safe and retrying.
      * Returns null when the queue is unavailable (bean disabled or database down).
      */
-    private CompletableFuture<Optional<TibrvMsg>> dispatchDurable(
+    private CompletableFuture<Optional<TibrvMsg>> dispatchPersistent(
             Handler handler, String command, TibrvMsg message) {
-        RvDurableCommandQueue queue = durableQueueProvider.getIfAvailable();
+        RvPersistentCommandQueue queue = persistentQueueProvider.getIfAvailable();
         if (queue == null) {
-            log.warn("Durable command '{}' has no queue bean (durable-queue disabled);"
+            log.warn("Persistent command '{}' has no queue bean (persistent-queue disabled);"
                     + " falling back to in-memory retry", command);
             return null;
         }
@@ -136,7 +136,7 @@ public class RvCommandDispatcher implements BeanPostProcessor {
         try {
             id = queue.enqueue(command, message);
         } catch (Exception databaseFailure) {
-            log.error("Failed to enqueue durable command '{}'; falling back to in-memory retry",
+            log.error("Failed to enqueue persistent command '{}'; falling back to in-memory retry",
                     command, databaseFailure);
             return null;
         }
@@ -146,14 +146,14 @@ public class RvCommandDispatcher implements BeanPostProcessor {
             return CompletableFuture.completedFuture(reply);
         } catch (Exception exception) {
             Throwable failure = unwrap(exception);
-            log.warn("Durable command '{}' (row {}) failed inline, parked for the queue poller: {}",
+            log.warn("Persistent command '{}' (row {}) failed inline, parked for the queue poller: {}",
                     command, id, String.valueOf(failure));
             queue.failAttempt(id, String.valueOf(failure));
             return CompletableFuture.completedFuture(queuedReply(command, id, String.valueOf(failure)));
         }
     }
 
-    /** Single handler invocation without retries; used by the durable queue poller. */
+    /** Single handler invocation without retries; used by the persistent queue poller. */
     Optional<TibrvMsg> invokeOnce(String command, TibrvMsg message) throws Exception {
         Handler handler = handlers.get(command);
         if (handler == null) {

@@ -83,7 +83,7 @@ public final class RvMessages {
     }
 
     /**
-     * Serializes a message's fields to a text payload for the durable queue. Values
+     * Serializes a message's fields to a text payload for the persistent queue. Values
      * are stored as strings; record binding converts them back on deserialization.
      */
     public static String serialize(TibrvMsg message) throws TibrvException {

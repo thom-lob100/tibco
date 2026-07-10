@@ -14,7 +14,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
      │                                    │   └─ RvCommandDispatcher
      │                                    │        ├─ @RvCommand 메서드 실행
      │                                    │        ├─ 실패 시: 비동기 재시도(메모리)
-     │                                    │        └─ durable: rv_command_queue(DB) 재처리
+     │                                    │        └─ persistent: rv_command_queue(DB) 재처리
      │  P2.TEST.BOOT.<내장비>.MESSO.<command> │
      ◀──────────── RV (rvd) ──────────────┤ RendezvousPublisher (destinations)
 [MESSO]
@@ -25,7 +25,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `RendezvousSubscriber` | DQ 그룹 가입, 수신 메시지를 디스패처로 전달, 핸들러 응답 자동 회신 |
 | `RvCommandDispatcher` | `@RvCommand` 메서드 레지스트리 + command element 기반 라우팅 + 재시도 |
 | `RendezvousPublisher` | `destinations`에 정의된 대상으로 publish / request(응답 대기) |
-| `RvDurableCommandQueue` | `durable = true` command의 DB 재처리 큐 (`rv_command_queue`) |
+| `RvPersistentCommandQueue` | `persistent = true` command의 DB 재처리 큐 (`rv_command_queue`) |
 | `RvMessages` | `TibrvMsg` ↔ record/Map 변환, 큐 저장용 직렬화 |
 | `RendezvousProperties` | `aos.rendezvous.*` 설정 바인딩, subject/DQ 이름 조합 |
 | `SampleCommands` | **샘플** — 실제 업무 핸들러로 교체 대상 |
@@ -48,7 +48,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 2. **JDK** — pom은 JDK 25 기준. 회사 표준 JDK가 다르면 부모 pom의
    `maven.compiler.release`를 조정한다. (이 문서를 만든 개발 PC에는 JDK 17뿐이라
    `-Dmaven.compiler.release=17`로 컴파일·검증했다.)
-3. **DB 교체 (durable 큐 사용 시)** — `spring.datasource`를 실제 DB로 변경.
+3. **DB 교체 (persistent 큐 사용 시)** — `spring.datasource`를 실제 DB로 변경.
    `schema.sql`은 H2 문법이므로 실제 DB에 맞게 `rv_command_queue`,
    `sample_settlement`(샘플) 테이블을 생성하고, 운영 DB에서는
    `spring.sql.init.mode`를 제거(또는 `never`)한다. H2 전용 문법 두 곳:
@@ -103,7 +103,7 @@ aos:
       backoff: 0.5
       threads: 2
 
-    durable-queue:              # durable command DB 재처리 큐
+    persistent-queue:              # persistent command DB 재처리 큐
       enabled: true
       poll-interval: 5.0
       max-attempts: 5           # 소진 시 FAILED(dead letter)
@@ -164,33 +164,33 @@ public class OrderCommands {
 | 단계 | 대상 | 동작 |
 |---|---|---|
 | ① 비동기 재시도 | 모든 command | 1차는 DQ 콜백에서, 실패 시 `rv-handler-retry-*` 풀에서 backoff 재시도. 최종 실패 → `{status=ERROR}` 회신. **JVM 죽으면 유실** |
-| ② durable 큐 | `@RvCommand(durable=true)` | 처리 전 DB 저장 → 실패 시 `{status=QUEUED}` 회신 후 폴러가 재처리. **재기동에도 생존.** max-attempts 소진 → FAILED |
+| ② persistent 큐 | `@RvCommand(persistent=true)` | 처리 전 DB 저장 → 실패 시 `{status=QUEUED}` 회신 후 폴러가 재처리. **재기동에도 생존.** max-attempts 소진 → FAILED |
 | ③ dead letter | FAILED 행 | 수동 복구: `UPDATE rv_command_queue SET status='PENDING', attempts=0 WHERE id=...` |
 
-durable 주의사항:
+persistent 주의사항:
 - **멱등 필수** — at-least-once라 같은 메시지가 두 번 실행될 수 있다.
-- durable 재시도는 회신하지 않는다(호출자 `_INBOX`는 이미 소멸). 호출자는
+- persistent 재시도는 회신하지 않는다(호출자 `_INBOX`는 이미 소멸). 호출자는
   `{status=QUEUED}`를 "접수됨"으로 처리한다.
 - 필드는 문자열로 직렬화·복원된다.
 
-### durable 체이닝 + 트랜잭션 (업무 쓰기 + 후속 command 원자성)
+### persistent 체이닝 + 트랜잭션 (업무 쓰기 + 후속 command 원자성)
 
 ```java
 @Transactional(rollbackFor = Exception.class)   // ★ TibrvException은 checked라 rollbackFor 필수
-@RvCommand(durable = true)
+@RvCommand(persistent = true)
 public TibrvMsg orderSettle(OrderSettleRequest req) throws TibrvException {
     jdbc.update("MERGE INTO sample_settlement ...", req.orderId()); // 업무 쓰기(멱등)
-    durableQueue.submit("NOTIFY_SETTLED", event);   // 같은 트랜잭션 → 함께 커밋/롤백
+    persistentQueue.submit("NOTIFY_SETTLED", event);   // 같은 트랜잭션 → 함께 커밋/롤백
     return replyOk;
 }
 
-@RvCommand(value = "NOTIFY_SETTLED", durable = true)
+@RvCommand(value = "NOTIFY_SETTLED", persistent = true)
 public void notifySettled(OrderSettledEvent event) throws TibrvException {
     publisher.publish("messo", "ORDER_SETTLED", event);  // 알림만 독립 재시도
 }
 ```
 
-- `submit(command, payload)`: 후속 durable command를 RV 없이 큐에 직접 적재.
+- `submit(command, payload)`: 후속 persistent command를 RV 없이 큐에 직접 적재.
 - 정산은 1회만 실행되고, publish 실패는 NOTIFY 단계만 재시도된다.
 - 업무 쓰기와 submit이 같은 DataSource면 한 트랜잭션으로 묶여 원자적이다.
 
@@ -213,7 +213,7 @@ TibrvMsg reply = publisher.request("messo", "ORDER_CREATE", payload, 10.0);
 - destination별 transport는 최초 사용 시 생성되어 재사용된다.
 - **timeout 재시도는 같은 요청을 재전송**한다 → 대상 핸들러 멱등 필요.
 - 응답의 `status` 필드 규약: 정상은 핸들러가 정의, `ERROR` = 상대 처리 실패(즉시),
-  `QUEUED` = 상대가 durable 큐로 접수. `null` = 응답 없음(timeout).
+  `QUEUED` = 상대가 persistent 큐로 접수. `null` = 응답 없음(timeout).
 - publish는 fire-and-forget: **수신자가 없어도 실패하지 않는다.** 예외는
   transport/설정 오류(미정의 destination, rvd 불통)일 때만.
 
@@ -233,7 +233,7 @@ java -jar aos-boot-app.jar --aos.rendezvous.dq.scheduler-weight=1
 - 같은 listener(=같은 DQ 이름)로 띄운 인스턴스들이 한 그룹: 메시지당 1개 멤버만 처리,
   스케줄러 자동 선출·페일오버. 서비스를 나누려면 listener를 다르게.
 - 한 장비에 같은 서비스 여러 개면 `--aos.rendezvous.sender-name=HOST-2`로 구분.
-- durable 큐 모니터링:
+- persistent 큐 모니터링:
   ```sql
   SELECT status, COUNT(*) FROM rv_command_queue GROUP BY status;      -- 적체 확인
   SELECT * FROM rv_command_queue WHERE status = 'FAILED';             -- dead letter

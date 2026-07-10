@@ -18,7 +18,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
-        <!-- Durable command queue (rv_command_queue). H2 is the embedded default;
+        <!-- Persistent command queue (rv_command_queue). H2 is the embedded default;
              point spring.datasource at the real database in production. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

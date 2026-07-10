@@ -2,7 +2,7 @@ package com.p2gether.aos;
 
 import com.p2gether.aos.rv.RendezvousPublisher;
 import com.p2gether.aos.rv.RvCommand;
-import com.p2gether.aos.rv.RvDurableCommandQueue;
+import com.p2gether.aos.rv.RvPersistentCommandQueue;
 import com.tibco.tibrv.TibrvException;
 import com.tibco.tibrv.TibrvMsg;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SampleCommands {
 
     private final RendezvousPublisher publisher;
-    private final ObjectProvider<RvDurableCommandQueue> durableQueue;
+    private final ObjectProvider<RvPersistentCommandQueue> persistentQueue;
     private final JdbcTemplate jdbc;
 
     /** Destination notified when a settlement succeeds. */
@@ -71,7 +71,7 @@ public class SampleCommands {
     }
 
     /**
-     * Handles command {@code ORDER_SETTLE}; durable, so a failure parks the message in
+     * Handles command {@code ORDER_SETTLE}; persistent, so a failure parks the message in
      * the {@code rv_command_queue} table and it is retried across restarts. The
      * settlement write and the chained {@code NOTIFY_SETTLED} submit run in ONE
      * transaction (both share the datasource), so a failure rolls back both — the
@@ -82,7 +82,7 @@ public class SampleCommands {
      * to prove the rollback.
      */
     @Transactional(rollbackFor = Exception.class)
-    @RvCommand(durable = true)
+    @RvCommand(persistent = true)
     public TibrvMsg orderSettle(OrderSettleRequest request) throws TibrvException {
         // Idempotent settlement write (H2 MERGE = upsert; use the real database's
         // equivalent in production) - safe if a crash-reclaim re-runs this attempt.
@@ -90,11 +90,11 @@ public class SampleCommands {
                 + " VALUES (?, CURRENT_TIMESTAMP)", request.orderId());
         log.info("orderSettle executed for {}", request);
         OrderSettledEvent event = new OrderSettledEvent(request.orderId(), "SETTLED", "orderSettle");
-        RvDurableCommandQueue queue = durableQueue.getIfAvailable();
+        RvPersistentCommandQueue queue = persistentQueue.getIfAvailable();
         if (queue != null) {
             queue.submit("NOTIFY_SETTLED", event);
         } else {
-            // Durable queue disabled: notify best-effort inline.
+            // Persistent queue disabled: notify best-effort inline.
             publisher.publish(settleNotifyDestination, "ORDER_SETTLED", event);
         }
         if (Boolean.getBoolean("simulate.settle.failure")) {
@@ -111,7 +111,7 @@ public class SampleCommands {
      * settlement. A publish with no listeners does NOT fail (RV is fire-and-forget) —
      * this throws only on transport/config errors, e.g. an undefined destination.
      */
-    @RvCommand(value = "NOTIFY_SETTLED", durable = true)
+    @RvCommand(value = "NOTIFY_SETTLED", persistent = true)
     public void notifySettled(OrderSettledEvent event) throws TibrvException {
         publisher.publish(settleNotifyDestination, "ORDER_SETTLED", event);
         log.info("notifySettled published {} to '{}'", event, settleNotifyDestination);

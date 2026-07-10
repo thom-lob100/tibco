@@ -113,30 +113,30 @@ total retry duration (`retries × backoff` + handler time) below callers'
 `aos.rendezvous.request.timeout`, or the caller times out and resends before the
 ERROR reply arrives.
 
-### Durable commands (DB-backed reprocessing queue)
+### Persistent commands (DB-backed reprocessing queue)
 
-For commands that must not be lost, mark the handler `@RvCommand(durable = true)`
+For commands that must not be lost, mark the handler `@RvCommand(persistent = true)`
 (e.g. `orderSettle` in `SampleCommands`). The message is then **persisted to the
 `rv_command_queue` table before processing** (see `schema.sql`):
 
 ```java
 @Transactional(rollbackFor = Exception.class)              // settle write + submit are
-@RvCommand(durable = true)                                 // ONE transaction
+@RvCommand(persistent = true)                                 // ONE transaction
 public TibrvMsg orderSettle(OrderSettleRequest request) throws TibrvException {
     settleInDb(request);                                   // business write, runs once
-    durableQueue.submit("NOTIFY_SETTLED",                  // chain the notification as
-            new OrderSettledEvent(request.orderId(),       // its own durable command
+    persistentQueue.submit("NOTIFY_SETTLED",                  // chain the notification as
+            new OrderSettledEvent(request.orderId(),       // its own persistent command
                     "SETTLED", "orderSettle"));
     ...                                                    // reply OK - settle is done
 }
 
-@RvCommand(value = "NOTIFY_SETTLED", durable = true)       // publish-only step,
+@RvCommand(value = "NOTIFY_SETTLED", persistent = true)       // publish-only step,
 public void notifySettled(OrderSettledEvent event) throws TibrvException {
     publisher.publish("messo", "ORDER_SETTLED", event);    // retried independently
 }
 ```
 
-**Chaining durable steps**: `RvDurableCommandQueue.submit(command, payload)` inserts a
+**Chaining persistent steps**: `RvPersistentCommandQueue.submit(command, payload)` inserts a
 follow-up command directly into the queue (no RV round trip). Splitting settle and
 notify this way means a failed MESSO publish retries only `NOTIFY_SETTLED` — the
 settlement is never re-executed — and the notification still cannot be lost (it is a
@@ -157,7 +157,7 @@ listeners does not fail — RV publish only throws on transport/config errors.
 - inline first attempt succeeds → row deleted, normal reply;
 - it fails → the row stays queued and the caller immediately receives
   `{status=QUEUED, queueId, error}` — the message is safe and will be retried;
-- a background poller (`rv-durable-queue` thread) re-runs due rows with backoff —
+- a background poller (`rv-persistent-queue` thread) re-runs due rows with backoff —
   **surviving JVM restarts** — until success or `max-attempts`, then keeps the row as
   `FAILED` (dead letter). Requeue manually with
   `UPDATE rv_command_queue SET status = 'PENDING', attempts = 0 WHERE id = ...`.
@@ -165,13 +165,13 @@ listeners does not fail — RV publish only throws on transport/config errors.
   `processing-timeout`; claiming uses conditional UPDATEs, so multiple instances can
   share one queue table.
 
-Durable retries never send replies (the requester's inbox is gone by then); treat
-durable commands as async-acknowledged. Tune under `aos.rendezvous.durable-queue.*`
+Persistent retries never send replies (the requester's inbox is gone by then); treat
+persistent commands as async-acknowledged. Tune under `aos.rendezvous.persistent-queue.*`
 (`enabled`, `poll-interval: 5`s, `max-attempts: 5`, `backoff: 10`s, `batch-size`,
 `processing-timeout: 300`s). The queue is backed by `spring.datasource` — a local H2
 file database (`./data/rv-command-queue`) by default; point it at the real database in
 production. Field values are persisted as strings (record binding converts them back),
-so durable handlers should accept string-convertible field types.
+so persistent handlers should accept string-convertible field types.
 
 ## Calling other services (destinations)
 

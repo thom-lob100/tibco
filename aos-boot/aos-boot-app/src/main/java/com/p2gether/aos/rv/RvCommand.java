@@ -29,8 +29,8 @@ public @interface RvCommand {
      * Marks a command that must not be lost: the message is persisted to the
      * {@code rv_command_queue} table before processing, and on failure it is retried
      * from the database — surviving JVM restarts — until it succeeds or exhausts
-     * {@code aos.rendezvous.durable-queue.max-attempts} (then kept as FAILED).
+     * {@code aos.rendezvous.persistent-queue.max-attempts} (then kept as FAILED).
      * Request/reply callers receive a {@code {status=QUEUED}} reply on failure.
      */
-    boolean durable() default false;
+    boolean persistent() default false;
 }

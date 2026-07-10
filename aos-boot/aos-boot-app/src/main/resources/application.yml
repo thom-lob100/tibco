@@ -5,7 +5,7 @@ spring:
     # Active profile picks the environment: test | qa | real
     # e.g. --spring.profiles.active=qa
     default: test
-  # Backs the durable command queue (rv_command_queue, see schema.sql).
+  # Backs the persistent command queue (rv_command_queue, see schema.sql).
   # H2 file database for local runs - point at the real database in production.
   datasource:
     url: "jdbc:h2:file:./data/rv-command-queue"
@@ -71,10 +71,10 @@ aos:
       retries: 2
       backoff: 0.5
       threads: 2
-    # DB-backed reprocessing queue for @RvCommand(durable = true) commands:
+    # DB-backed reprocessing queue for @RvCommand(persistent = true) commands:
     # persisted before processing, retried from rv_command_queue across restarts,
     # kept as FAILED (dead letter) after max-attempts. Failure replies {status=QUEUED}.
-    durable-queue:
+    persistent-queue:
       enabled: true
       poll-interval: 5.0
       max-attempts: 5

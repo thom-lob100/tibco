@@ -28,21 +28,21 @@ public class RendezvousProperties {
     private final Dq dq = new Dq();
     private final Request request = new Request();
     private final HandlerRetry handlerRetry = new HandlerRetry();
-    private final DurableQueue durableQueue = new DurableQueue();
+    private final PersistentQueue persistentQueue = new PersistentQueue();
 
     /** Outbound targets keyed by a short name, e.g. {@code destinations.messo.listener=MESSO}. */
     private final Map<String, Destination> destinations = new LinkedHashMap<>();
 
     /**
-     * Database-backed reprocessing queue for {@code @RvCommand(durable = true)}
+     * Database-backed reprocessing queue for {@code @RvCommand(persistent = true)}
      * commands ({@code rv_command_queue} table): failed messages are retried from the
      * database and survive JVM restarts.
      */
     @Getter
     @Setter
-    public static class DurableQueue {
+    public static class PersistentQueue {
 
-        /** Disables the queue bean entirely; durable commands then fall back to in-memory retry. */
+        /** Disables the queue bean entirely; persistent commands then fall back to in-memory retry. */
         private boolean enabled = true;
         /** Seconds between polls for due PENDING rows. */
         private double pollInterval = 5.0;
