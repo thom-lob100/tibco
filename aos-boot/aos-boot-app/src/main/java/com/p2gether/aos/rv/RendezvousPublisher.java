@@ -61,6 +61,25 @@ public class RendezvousPublisher {
     }
 
     /**
+     * Single-attempt request/reply with no timeout retries, for interactive callers
+     * (e.g. the REST gateway) that must fail fast instead of holding their thread
+     * through the retry policy.
+     *
+     * @return the reply message, or {@code null} on timeout
+     */
+    public TibrvMsg requestOnce(String destinationName, String command, Object payload, double timeoutSeconds)
+            throws TibrvException {
+        String subject = properties.subjectFor(destinationName, command);
+        TibrvMsg message = RvMessages.toMsg(payload);
+        message.setSendSubject(subject);
+        TibrvMsg reply = transport(destinationName).sendRequest(message, timeoutSeconds);
+        if (reply == null) {
+            log.warn("Request to '{}' timed out after {}s (single attempt)", subject, timeoutSeconds);
+        }
+        return reply;
+    }
+
+    /**
      * Request/reply with an explicit per-attempt timeout; retries on timeout per
      * {@code aos.rendezvous.request.retries}/{@code backoff}.
      *

@@ -1,3 +1,8 @@
+server:
+  # REST gateway port; separate per instance when several run on one host,
+  # e.g. --server.port=8081
+  port: 8080
+
 spring:
   application:
     name: aos-boot-app
@@ -18,6 +23,10 @@ spring:
       mode: always
 
 aos:
+  api:
+    # REST -> RV bridge: seconds to wait for the reply, single attempt (no retries);
+    # failures return immediately as HTTP 404/502/504 instead of blocking Tomcat.
+    rv-timeout: 2.0
   rendezvous:
     service: "23119"
     network: ";239.11.19.99"
@@ -51,6 +60,10 @@ aos:
         listener: "MESSO"
         service: "23121"
         network: ";239.11.19.98"
+      # This service's own DQ group - internal entry point for the REST gateway
+      # and self-addressed calls. Connection falls back to the defaults above.
+      self:
+        listener: "${aos.rendezvous.subject.listener}"
       # Define more targets the same way, e.g.:
       # bill:
       #   listener: "BILL"

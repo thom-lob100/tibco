@@ -10,6 +10,7 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -80,6 +81,16 @@ public final class RvMessages {
             throw new IllegalArgumentException("Cannot bind message " + message
                     + " into " + type.getName(), exception);
         }
+    }
+
+    /** Copies a message's fields into an ordered map (e.g. for a JSON response body). */
+    public static Map<String, Object> toMap(TibrvMsg message) throws TibrvException {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        for (int i = 0; i < message.getNumFields(); i++) {
+            TibrvMsgField field = message.getFieldByIndex(i);
+            fields.put(field.name, field.data);
+        }
+        return fields;
     }
 
     /**

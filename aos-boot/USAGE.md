@@ -31,6 +31,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `RendezvousProperties` | `aos.rendezvous.*` 설정 바인딩, subject/DQ 이름 조합 |
 | `SampleCommands` | **샘플** — 주문 처리 예제(persistent 체이닝·트랜잭션 포함), 교체 대상 |
 | `EqpCommands` | **샘플** — EAP→BOOT `EQP_STATUS` 예제: 장비마스터 조회 후 상태를 REQUEST로 변경 |
+| `EqpApiController` | **샘플** — REST 게이트웨이: HTTP 요청을 RV command로 변환 (7장) |
 | `DestinationSimulator` | **테스트 도구** — 상대 시스템(MESSO 등) 흉내, 기본 비활성 |
 
 ## 2. 회사(실제 TIBCO 설치 환경) 적용 체크리스트
@@ -293,7 +294,39 @@ standby가 승격되어 항상 2대가 소비하도록 유지된다. DQ만으로
   ```
 - 여러 인스턴스가 같은 큐 테이블을 공유해도 안전(조건부 UPDATE로 행 claim).
 
-## 7. TIBCO 없이 테스트 (개발 PC)
+## 7. REST API 게이트웨이
+
+내장 Tomcat(`server.port`, 기본 8080)이 RV 구독자와 같은 프로세스에 공존한다.
+패턴: **HTTP 요청 → RV command 변환 → 응답을 HTTP 상태로 매핑.**
+
+```
+POST /api/eqp/EQ-4711/ports/P-03/status-request
+  → publisher.requestOnce("self", "EQP_STATUS", {eqpId, portId}, 2.0s)
+  → DQ 멤버 중 1대가 처리 (자기 자신 포함)
+  → HTTP 200 {"status":"OK","eqpId":"EQ-4711","portId":"P-03","previousStatus":"IDLE"}
+```
+
+| RV 응답 | HTTP |
+|---|---|
+| `status=OK` (업무 정상) | 200 |
+| `status=QUEUED` (persistent 접수) | 202 |
+| `status=NOT_FOUND` 등 업무 거절 | 404 |
+| `status=ERROR` (처리 실패) | 502 |
+| `null` (timeout — 무응답) | 504 |
+
+설계 규칙 (`EqpApiController` 참고):
+- **`requestOnce` 사용 (필수)** — 재시도 없는 단발 요청 + 짧은 timeout
+  (`aos.api.rv-timeout`, 기본 2초). 일반 `request()`의 재시도 정책(최악 ~16초)을
+  API에 쓰면 Tomcat 스레드가 고갈된다. 실패는 HTTP로 즉시 반환하고 재시도는
+  클라이언트 몫.
+- **유스케이스별 명시적 엔드포인트** — `POST /rv/{command}` 같은 범용 프록시는
+  내부 command 공간 전체를 HTTP에 노출하므로 금지.
+- **`self` destination** — 자기 서비스의 DQ 그룹으로 보내는 내부 진입점
+  (yml에 정의, listener는 내 listener를 따라감). REST로 받은 요청이 DQ를 거치므로
+  멤버 간 부하분산·유실 정책(persistent)이 그대로 적용된다.
+- 한 장비에 여러 인스턴스면 `--server.port`를 인스턴스별로 분리하고 앞에 LB를 둔다.
+
+## 8. TIBCO 없이 테스트 (개발 PC)
 
 - `tibrv-stub`이 JVM 내부 인메모리 버스로 RV를 흉내낸다: subject 와일드카드 매칭,
   DQ 라운드로빈, `_INBOX` request/reply까지 동작. **단일 JVM 한정**, 프로세스 간

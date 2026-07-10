@@ -235,6 +235,15 @@ connection for `factory.environment.*.*.<listener>.>` and replying `{status=OK}`
 every request. It works both against the in-memory stub (same JVM) and a real rvd
 (separate processes).
 
+## REST gateway
+
+An embedded Tomcat (`server.port`, default 8080) coexists with the RV subscriber.
+`EqpApiController` shows the bridge pattern: an explicit endpoint per use case turns
+the HTTP request into an RV command sent to the `self` destination (this service's
+own DQ group) via `requestOnce` — one attempt, short timeout (`aos.api.rv-timeout`,
+2s) so Tomcat threads never wait out the RV retry policy — and maps the reply back
+(`OK`→200, `QUEUED`→202, `NOT_FOUND`→404, `ERROR`→502, timeout→504).
+
 ## Environments (Spring profiles)
 
 The `environment` element comes from the active profile: `application-test.yml` (`TEST`),
