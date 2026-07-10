@@ -26,6 +26,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `RvCommandDispatcher` | `@RvCommand` 메서드 레지스트리 + command element 기반 라우팅 + 재시도 |
 | `RendezvousPublisher` | `destinations`에 정의된 대상으로 publish / request(응답 대기) |
 | `RvPersistentCommandQueue` | `persistent = true` command의 DB 재처리 큐 (`rv_command_queue`) |
+| `RendezvousFtCoordinator` | FT(active/standby) 모드: 선출 결과에 따라 Subscriber 소비를 켜고 끔 (기본 비활성) |
 | `RvMessages` | `TibrvMsg` ↔ record/Map 변환, 큐 저장용 직렬화 |
 | `RendezvousProperties` | `aos.rendezvous.*` 설정 바인딩, subject/DQ 이름 조합 |
 | `SampleCommands` | **샘플** — 주문 처리 예제(persistent 체이닝·트랜잭션 포함), 교체 대상 |
@@ -85,6 +86,12 @@ aos:
       name: "AOS.${aos.rendezvous.subject.listener}.DQ"  # listener에서 자동 파생
       scheduler-weight: 1       # 높은 쪽이 스케줄러로 선출
       # worker-weight: 1, worker-tasks: 1 (처리 용량)
+
+    ft:                         # FT(active/standby) 모드 - 아래 6장 참고
+      enabled: false            # true → weight 높은 active-goal개만 소비, 나머지 대기
+      weight: 1                 # 인스턴스별 오버라이드 (높은 쪽이 active 우선)
+      active-goal: 1            # 동시에 active일 멤버 수
+      # name: AOS.<listener>.FT 자동 파생. heartbeat/preparation/activation 조정 가능
 
     destinations:               # 송신 대상 (여러 개 정의 가능)
       messo:
@@ -234,6 +241,25 @@ java -jar aos-boot-app.jar --aos.rendezvous.dq.scheduler-weight=1
 - 같은 listener(=같은 DQ 이름)로 띄운 인스턴스들이 한 그룹: 메시지당 1개 멤버만 처리,
   스케줄러 자동 선출·페일오버. 서비스를 나누려면 listener를 다르게.
 - 한 장비에 같은 서비스 여러 개면 `--aos.rendezvous.sender-name=HOST-2`로 구분.
+
+### FT(active/standby) 모드
+
+DQ가 "모든 멤버가 나눠 처리"라면, FT는 "**weight 높은 active-goal개만 처리하고
+나머지는 대기**"다. active가 죽으면 대기 인스턴스가 ACTIVATE 콜백을 받아 즉시
+이어받는다(소비 시작). 상태를 가진 단독 처리 서비스, 순서가 중요한 처리에 적합.
+
+```bash
+# active 우선 인스턴스
+java -jar aos-boot-app.jar --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=2
+# standby 인스턴스 (active가 죽으면 자동 승격)
+java -jar aos-boot-app.jar --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=1
+```
+
+- FT 그룹 이름은 `AOS.<listener>.FT`로 자동 파생 (listener를 바꾸면 함께 바뀜).
+- standby는 RV에 연결은 유지하되 listener를 붙이지 않아 아무것도 소비하지 않는다.
+  승격 로그: `FT 'AOS.BOOT.FT' (weight=1): ACTIVATE — starting to consume`.
+- `active-goal > 1`이면 "N개 active가 DQ로 나눠 처리 + 나머지 standby" 조합이 된다.
+- FT 미사용(기본)이면 기존 DQ 동작 그대로.
 - persistent 큐 모니터링:
   ```sql
   SELECT status, COUNT(*) FROM rv_command_queue GROUP BY status;      -- 적체 확인

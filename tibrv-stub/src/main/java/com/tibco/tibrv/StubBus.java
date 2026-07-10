@@ -59,6 +59,44 @@ final class StubBus {
         });
     }
 
+    // --- Fault-tolerance groups: highest-weight members up to activeGoal are active ---
+
+    private static final Map<String, CopyOnWriteArrayList<TibrvFtMember>> FT_GROUPS = new ConcurrentHashMap<>();
+    private static final java.util.Set<TibrvFtMember> FT_ACTIVE = ConcurrentHashMap.newKeySet();
+
+    static synchronized void ftJoin(String busKey, TibrvFtMember member) {
+        FT_GROUPS.computeIfAbsent(member.busGroupKey(), key -> new CopyOnWriteArrayList<>()).add(member);
+        ftElect(FT_GROUPS.get(member.busGroupKey()));
+    }
+
+    static synchronized void ftLeave(TibrvFtMember member) {
+        List<TibrvFtMember> members = FT_GROUPS.get(member.busGroupKey());
+        if (members == null) {
+            return;
+        }
+        members.remove(member);
+        FT_ACTIVE.remove(member);
+        ftElect(members);
+    }
+
+    private static void ftElect(List<TibrvFtMember> members) {
+        if (members.isEmpty()) {
+            return;
+        }
+        List<TibrvFtMember> ranked = new ArrayList<>(members);
+        ranked.sort((left, right) -> Integer.compare(right.weight(), left.weight()));
+        int activeGoal = ranked.stream().mapToInt(TibrvFtMember::activeGoal).max().orElse(1);
+        for (int rank = 0; rank < ranked.size(); rank++) {
+            TibrvFtMember member = ranked.get(rank);
+            boolean shouldBeActive = rank < activeGoal;
+            if (shouldBeActive && FT_ACTIVE.add(member)) {
+                member.post(TibrvFtMember.ACTIVATE);
+            } else if (!shouldBeActive && FT_ACTIVE.remove(member)) {
+                member.post(TibrvFtMember.DEACTIVATE);
+            }
+        }
+    }
+
     /** Rendezvous subject matching: '*' matches exactly one element, '>' the rest (one or more). */
     static boolean matches(String pattern, String subject) {
         String[] patternElements = pattern.split("\\.", -1);

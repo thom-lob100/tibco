@@ -81,6 +81,15 @@ aos:
       backoff: 10.0
       batch-size: 10
       processing-timeout: 300.0
+    # Fault-tolerance (active/standby) mode. When enabled, instances sharing the
+    # FT group (AOS.<listener>.FT) elect the highest-weight active-goal members
+    # as consumers; the rest stand by and take over on failure.
+    # e.g. instance A --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=2
+    #      instance B --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=1
+    ft:
+      enabled: false
+      weight: 1
+      active-goal: 1
     dq:
       # All members sharing this name form one distributed queue.
       # Derived from the listener element; can still be overridden directly.

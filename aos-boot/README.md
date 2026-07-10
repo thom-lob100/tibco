@@ -69,6 +69,16 @@ argument switches both the subject and the DQ group:
 Note: two DQ groups listening on the same subject each process every message once
 (one delivery per group), so distinct services need distinct listener elements.
 
+## Fault-tolerance (active/standby) mode
+
+`--aos.rendezvous.ft.enabled=true` switches from "all members consume, load-balanced"
+to **active/standby**: instances sharing the FT group (`AOS.<listener>.FT`, derived
+from the listener element) elect the highest-weight `active-goal` members as
+consumers; the rest stay connected but consume nothing until an active member dies,
+when a standby is promoted (ACTIVATE) and starts consuming. Configure per instance
+with `--aos.rendezvous.ft.weight=2` (preferred active) / `=1` (standby). With
+`active-goal > 1`, the N active members still load-balance through the DQ.
+
 ## Command dispatch (@RvCommand)
 
 Each message assigned to this DQ member is routed by its **command element** (the last

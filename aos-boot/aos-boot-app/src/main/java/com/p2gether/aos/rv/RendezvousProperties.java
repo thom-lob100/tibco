@@ -26,12 +26,40 @@ public class RendezvousProperties {
 
     private final Subject subject = new Subject();
     private final Dq dq = new Dq();
+    private final Ft ft = new Ft();
     private final Request request = new Request();
     private final HandlerRetry handlerRetry = new HandlerRetry();
     private final PersistentQueue persistentQueue = new PersistentQueue();
 
     /** Outbound targets keyed by a short name, e.g. {@code destinations.messo.listener=MESSO}. */
     private final Map<String, Destination> destinations = new LinkedHashMap<>();
+
+    /**
+     * Fault-tolerance (active/standby) mode: instances sharing the group name elect
+     * the highest-weight {@code active-goal} members as active consumers; the rest
+     * stand by and take over when an active member dies. Off by default — plain DQ
+     * mode (all members consuming, load-balanced) is the normal deployment.
+     */
+    @Getter
+    @Setter
+    public static class Ft {
+
+        private boolean enabled = false;
+        /** FT group name; null derives {@code AOS.<listener>.FT}. */
+        private String name;
+        /** Higher weight is preferred as the active member; override per instance. */
+        private int weight = 1;
+        /** How many members should be active at once. */
+        private int activeGoal = 1;
+        private double heartbeat = 1.5;
+        private double preparation = 0.0;
+        private double activation = 4.8;
+    }
+
+    /** FT group name, derived from the listener element unless set explicitly. */
+    public String ftName() {
+        return ft.getName() != null ? ft.getName() : "AOS." + subject.getListener() + ".FT";
+    }
 
     /**
      * Database-backed reprocessing queue for {@code @RvCommand(persistent = true)}

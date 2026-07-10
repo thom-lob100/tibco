@@ -28,6 +28,11 @@ import org.springframework.stereotype.Component;
  * <p>Each assigned message is routed by its command element to the matching
  * {@link RvCommand} handler method; a reply the handler returns is sent back when the
  * request carries a reply subject.
+ *
+ * <p>With {@code aos.rendezvous.ft.enabled=true} the listener is NOT attached at
+ * startup: {@link RendezvousFtCoordinator} calls {@link #activate()} /
+ * {@link #deactivate()} as this instance wins or loses the fault-tolerance election,
+ * so standby instances stay connected but consume nothing until promoted.
  */
 @Slf4j
 @Component
@@ -46,7 +51,6 @@ public class RendezvousSubscriber implements TibrvMsgCallback {
     @PostConstruct
     public void start() {
         RendezvousProperties.Dq dq = properties.getDq();
-        String subject = properties.getSubject().value();
         try {
             Tibrv.open(Tibrv.IMPL_NATIVE);
             transport = new TibrvRvdTransport(
@@ -56,16 +60,41 @@ public class RendezvousSubscriber implements TibrvMsgCallback {
                     dq.getWorkerWeight(), dq.getWorkerTasks(), dq.getSchedulerWeight(),
                     dq.getSchedulerHeartbeat(), dq.getSchedulerActivation());
             queue = new TibrvQueue();
-            listener = new TibrvCmListener(queue, this, dqTransport, subject, null);
             dispatcher = new TibrvDispatcher(queue);
-            log.info("Joined DQ '{}' on subject '{}' (workerWeight={}, schedulerWeight={}, "
-                            + "service={}, network={}, daemon={})",
-                    dq.getName(), subject,
-                    dq.getWorkerWeight(), dq.getSchedulerWeight(),
-                    properties.getService(), properties.getNetwork(), properties.getDaemon());
+            if (properties.getFt().isEnabled()) {
+                log.info("FT mode: standing by in group '{}' until activated (weight={})",
+                        properties.ftName(), properties.getFt().getWeight());
+            } else {
+                activate();
+            }
         } catch (TibrvException exception) {
             throw new IllegalStateException("Failed to join the Rendezvous distributed queue", exception);
         }
+    }
+
+    /** Attaches the DQ listener; idempotent. Called at startup, or by the FT coordinator. */
+    public synchronized void activate() throws TibrvException {
+        if (listener != null) {
+            return;
+        }
+        RendezvousProperties.Dq dq = properties.getDq();
+        String subject = properties.getSubject().value();
+        listener = new TibrvCmListener(queue, this, dqTransport, subject, null);
+        log.info("Joined DQ '{}' on subject '{}' (workerWeight={}, schedulerWeight={}, "
+                        + "service={}, network={}, daemon={})",
+                dq.getName(), subject,
+                dq.getWorkerWeight(), dq.getSchedulerWeight(),
+                properties.getService(), properties.getNetwork(), properties.getDaemon());
+    }
+
+    /** Detaches the DQ listener (stop consuming); idempotent. Called by the FT coordinator. */
+    public synchronized void deactivate() {
+        if (listener == null) {
+            return;
+        }
+        listener.destroy();
+        listener = null;
+        log.info("Left DQ '{}' — standing by", properties.getDq().getName());
     }
 
     @Override
