@@ -19,6 +19,7 @@
 
     <modules>
         <module>aos-boot-app</module>
+        <module>aos-boot-samples</module>
     </modules>
 
     <properties>

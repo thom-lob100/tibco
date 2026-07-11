@@ -1,4 +1,4 @@
-package com.p2gether.aos.api;
+package com.p2gether.aos.samples;
 
 import com.p2gether.aos.rv.RendezvousPublisher;
 import com.p2gether.aos.rv.RvMessages;

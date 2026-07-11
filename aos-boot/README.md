@@ -7,8 +7,13 @@ processed by exactly one instance, with automatic scheduler election and failove
 > **상세 사용법·회사(실 TIBCO 환경) 적용 체크리스트는 [USAGE.md](USAGE.md) 참고.**
 
 - `aos-boot` — parent POM (Spring Boot 4.1.0, JDK 25, Lombok)
-- `aos-boot-app` — bootstrap module; joins DQ `AOS.BOOT.DQ` on subject `P2.TEST.*.*.BOOT.*`
-  (service `23119`, network `;239.11.19.99`, daemon `tcp:7500`) and logs each assigned message
+- `aos-boot-app` — the service itself; joins DQ `AOS.BOOT.DQ` on subject `P2.TEST.*.*.BOOT.*`
+  (service `23119`, network `;239.11.19.99`, daemon `tcp:7500`). Contains no sample code;
+  the runnable artifact is the `-exec` classified jar (the plain jar is the library
+  `aos-boot-samples` depends on)
+- `aos-boot-samples` — sample command handlers (`SampleCommands`, `EqpCommands`), the
+  sample REST endpoint (`EqpApiController`), and demo seed data. Run demos from here:
+  `mvn -pl aos-boot-samples spring-boot:run` (samples join the app via component scan)
 - `../tibrv-stub` — in-memory stub of `tibrvj` for machines without a TIBCO install:
   compiles the app AND simulates Rendezvous within one JVM (subject matching, DQ
   round-robin, request/reply) so logic can be tested locally; it cannot reach a real rvd

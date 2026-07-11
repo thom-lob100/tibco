@@ -1,4 +1,4 @@
-package com.p2gether.aos;
+package com.p2gether.aos.samples;
 
 import com.p2gether.aos.rv.RendezvousPublisher;
 import com.p2gether.aos.rv.RvCommand;
@@ -71,8 +71,8 @@ public class SampleCommands {
     }
 
     /**
-     * Handles command {@code ORDER_SETTLE}; persistent, so a failure parks the message in
-     * the {@code rv_command_queue} table and it is retried across restarts. The
+     * Handles command {@code ORDER_SETTLE}; persistent, so a failure parks the message
+     * in the {@code rv_command_queue} table and it is retried across restarts. The
      * settlement write and the chained {@code NOTIFY_SETTLED} submit run in ONE
      * transaction (both share the datasource), so a failure rolls back both — the
      * settlement is never recorded without its notification row and vice versa.

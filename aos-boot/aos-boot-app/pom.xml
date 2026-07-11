@@ -50,6 +50,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <!-- Keep the plain jar as the main artifact so aos-boot-samples can
+                     depend on it; the runnable jar gets the -exec classifier. -->
+                <configuration>
+                    <classifier>exec</classifier>
+                </configuration>
             </plugin>
         </plugins>
     </build>

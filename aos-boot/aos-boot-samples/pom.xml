@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.p2gether.aos</groupId>
+        <artifactId>aos-boot</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>aos-boot-samples</artifactId>
+    <name>aos-boot-samples</name>
+
+    <!--
+        Sample command handlers, REST endpoint, and demo seed data on top of
+        aos-boot-app. Run demos from THIS module (the samples land on the classpath
+        and are picked up by AosBootApplication's component scan):
+
+          mvn -pl aos-boot-samples spring-boot:run
+
+        The production artifact stays aos-boot-app's -exec jar, which contains
+        none of these samples.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>com.p2gether.aos</groupId>
+            <artifactId>aos-boot-app</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.p2gether.aos.AosBootApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -19,19 +19,3 @@ CREATE TABLE IF NOT EXISTS rv_command_queue (
 
 CREATE INDEX IF NOT EXISTS idx_rv_command_queue_poll
     ON rv_command_queue (status, next_attempt_at);
-
--- Sample business table written by SampleCommands.orderSettle inside the same
--- transaction as the chained NOTIFY_SETTLED submit.
-CREATE TABLE IF NOT EXISTS sample_settlement (
-    order_id   VARCHAR(100) PRIMARY KEY,
-    settled_at TIMESTAMP    NOT NULL
-);
-
--- Sample equipment master read/updated by EqpCommands.eqpStatus (EQP_STATUS).
-CREATE TABLE IF NOT EXISTS eqp_master (
-    eqp_id     VARCHAR(100) NOT NULL,
-    port_id    VARCHAR(100) NOT NULL,
-    status     VARCHAR(20)  NOT NULL,
-    updated_at TIMESTAMP    NOT NULL,
-    PRIMARY KEY (eqp_id, port_id)
-);

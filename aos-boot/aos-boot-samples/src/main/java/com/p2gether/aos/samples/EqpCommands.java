@@ -1,4 +1,4 @@
-package com.p2gether.aos;
+package com.p2gether.aos.samples;
 
 import com.p2gether.aos.rv.RvCommand;
 import java.util.List;

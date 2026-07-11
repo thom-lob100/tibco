@@ -29,9 +29,9 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `RendezvousFtCoordinator` | FT(active/standby) 모드: 선출 결과에 따라 Subscriber 소비를 켜고 끔 (기본 비활성) |
 | `RvMessages` | `TibrvMsg` ↔ record/Map 변환, 큐 저장용 직렬화 |
 | `RendezvousProperties` | `aos.rendezvous.*` 설정 바인딩, subject/DQ 이름 조합 |
-| `SampleCommands` | **샘플** — 주문 처리 예제(persistent 체이닝·트랜잭션 포함), 교체 대상 |
-| `EqpCommands` | **샘플** — EAP→BOOT `EQP_STATUS` 예제: 장비마스터 조회 후 상태를 REQUEST로 변경 |
-| `EqpApiController` | **샘플** — REST 게이트웨이: HTTP 요청을 RV command로 변환 (7장) |
+| `SampleCommands` | **샘플**(aos-boot-samples) — 주문 처리 예제(persistent 체이닝·트랜잭션 포함) |
+| `EqpCommands` | **샘플**(aos-boot-samples) — EAP→BOOT `EQP_STATUS` 예제: 장비마스터 상태를 REQUEST로 변경 |
+| `EqpApiController` | **샘플**(aos-boot-samples) — REST 게이트웨이: HTTP 요청을 RV command로 변환 (7장) |
 | `DestinationSimulator` | **테스트 도구** — 상대 시스템(MESSO 등) 흉내, 기본 비활성 |
 
 ## 2. 회사(실제 TIBCO 설치 환경) 적용 체크리스트
@@ -59,8 +59,10 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 4. **접속값/이름** — profile별 yml에 실제 `service`/`network`/`daemon`,
    `destinations`에 상대 시스템(MESSO 등)의 실제 연결값, `subject.listener`에
    이 서비스의 실제 이름.
-5. **샘플 제거** — `SampleCommands`를 실제 업무 핸들러로 교체.
-   `DestinationSimulator`는 기본 비활성이므로 두어도 무방(연동 리허설에 유용).
+5. **샘플 분리 (구조로 해결됨)** — 샘플 코드와 데모 시드는 `aos-boot-samples` 모듈에만
+   있고, 운영 산출물(`aos-boot-app-*-exec.jar`)에는 포함되지 않는다. 실제 업무 핸들러는
+   `aos-boot-app`(또는 별도 업무 모듈)에 작성하면 된다. `DestinationSimulator`는 앱에
+   있지만 기본 비활성(연동 리허설용).
 
 ## 3. 설정 레퍼런스 (`application.yml`)
 
@@ -227,6 +229,10 @@ TibrvMsg reply = publisher.request("messo", "ORDER_CREATE", payload, 10.0);
   transport/설정 오류(미정의 destination, rvd 불통)일 때만.
 
 ## 6. 실행·운영
+
+운영 산출물은 `aos-boot-app-<버전>-exec.jar`(샘플 미포함)이고, 아래 예시의
+`aos-boot-app.jar`는 이를 줄여 쓴 것이다. 샘플 포함 데모는
+`mvn -pl aos-boot-samples spring-boot:run`으로 실행한다.
 
 ```bash
 # 기본: test 환경, listener BOOT, DQ AOS.BOOT.DQ
