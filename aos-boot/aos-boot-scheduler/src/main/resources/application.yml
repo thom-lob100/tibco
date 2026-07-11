@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: aos-boot-scheduler
+  profiles:
+    # Active profile picks the environment: test | qa | real
+    # e.g. --spring.profiles.active=qa
+    default: test
+  # Backs the persistent command queue (rv_command_queue, see schema.sql in core).
+  # H2 file database for local runs - point at the real database in production.
+  datasource:
+    url: "jdbc:h2:file:./data/rv-command-queue"
+    username: sa
+    password: ""
+  sql:
+    init:
+      # Run schema.sql (idempotent CREATE IF NOT EXISTS) on every start; file-based
+      # H2 does not count as an embedded database, so the default would skip it.
+      mode: always
+
+aos:
+  scheduler:
+    # Example periodic call (SampleScheduledCall); off by default. Real jobs follow
+    # the same pattern: @Scheduled + subscriber.isActive() guard.
+    sample:
+      enabled: false
+      interval: 60 # seconds between calls
+  rendezvous:
+    service: "23119"
+    network: ";239.11.19.99"
+    daemon: "tcp:7500"
+    # Sender element on outbound subjects; unset -> machine name is auto-detected.
+    # Override per instance when several run on one host,
+    # e.g. --aos.rendezvous.sender-name=EAPHOST01-2
+    # sender-name:
+    subject:
+      local: false
+      factory: "P2"
+      send-system: "*"
+      sender: "*"
+      # This service's element: subject P2.<env>.*.*.SCH.*, and the groups
+      # AOS.SCH.DQ / AOS.SCH.FT are derived from it.
+      listener: "SCH"
+      command: "*"
+    # Predefined outbound targets - the whole point of this service. Connection
+    # values omitted here fall back to aos.rendezvous.service/network/daemon;
+    # per-environment values belong in application-<profile>.yml.
+    destinations:
+      messo:
+        listener: "MESSO"
+        service: "23121"
+        network: ";239.11.19.98"
+    request:
+      timeout: 5.0
+      retries: 2
+      backoff: 0.5
+    handler-retry:
+      retries: 2
+      backoff: 0.5
+      threads: 2
+    persistent-queue:
+      enabled: true
+      poll-interval: 5.0
+      max-attempts: 5
+      backoff: 10.0
+      batch-size: 10
+      processing-timeout: 300.0
+    # A periodic caller must be single-active, so FT (active/standby) is ON by
+    # default in this module: only the elected active instance consumes AND fires
+    # scheduled jobs (via the isActive() guard). Start a standby with a lower
+    # weight, e.g. --aos.rendezvous.ft.weight=1
+    ft:
+      enabled: true
+      weight: 2
+      active-goal: 1
+    dq:
+      name: "AOS.${aos.rendezvous.subject.listener}.DQ"
+      scheduler-weight: 1

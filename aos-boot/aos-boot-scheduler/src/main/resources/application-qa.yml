@@ -1,0 +1,5 @@
+# QA environment. Environment-specific overrides (daemon, network, ...) go here.
+aos:
+  rendezvous:
+    subject:
+      environment: "QA"

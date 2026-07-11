@@ -87,6 +87,16 @@ public class RendezvousSubscriber implements TibrvMsgCallback {
                 properties.getService(), properties.getNetwork(), properties.getDaemon());
     }
 
+    /**
+     * Whether this instance is currently consuming: always true after startup without
+     * FT; with FT, true only while this member holds an active slot. Periodic jobs
+     * ({@code @Scheduled}) must check this, because Spring scheduling keeps running on
+     * FT standbys — only RV consumption is toggled by the coordinator.
+     */
+    public synchronized boolean isActive() {
+        return listener != null;
+    }
+
     /** Detaches the DQ listener (stop consuming); idempotent. Called by the FT coordinator. */
     public synchronized void deactivate() {
         if (listener == null) {
