@@ -18,6 +18,7 @@
     <name>aos-boot</name>
 
     <modules>
+        <module>aos-boot-core</module>
         <module>aos-boot-app</module>
         <module>aos-boot-samples</module>
     </modules>

@@ -7,10 +7,13 @@ processed by exactly one instance, with automatic scheduler election and failove
 > **상세 사용법·회사(실 TIBCO 환경) 적용 체크리스트는 [USAGE.md](USAGE.md) 참고.**
 
 - `aos-boot` — parent POM (Spring Boot 4.1.0, JDK 25, Lombok)
-- `aos-boot-app` — the service itself; joins DQ `AOS.BOOT.DQ` on subject `P2.TEST.*.*.BOOT.*`
-  (service `23119`, network `;239.11.19.99`, daemon `tcp:7500`). Contains no sample code;
-  the runnable artifact is the `-exec` classified jar (the plain jar is the library
-  `aos-boot-samples` depends on)
+- `aos-boot-core` — the Rendezvous framework library (`com.p2gether.aos.rv`): DQ
+  subscriber, @RvCommand dispatch, publisher/destinations, persistent command queue,
+  FT coordination, plus the `rv_command_queue` DDL. Business modules depend on this
+- `aos-boot-app` — the runnable service (main class + configuration); joins DQ
+  `AOS.BOOT.DQ` on subject `P2.TEST.*.*.BOOT.*` (service `23119`, network
+  `;239.11.19.99`, daemon `tcp:7500`). Aggregates business modules as dependencies;
+  the deployable artifact is the `-exec` classified jar and contains no sample code
 - `aos-boot-samples` — sample command handlers (`SampleCommands`, `EqpCommands`), the
   sample REST endpoint (`EqpApiController`), and demo seed data. Run demos from here:
   `mvn -pl aos-boot-samples spring-boot:run` (samples join the app via component scan)

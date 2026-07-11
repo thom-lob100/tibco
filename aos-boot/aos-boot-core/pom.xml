@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.p2gether.aos</groupId>
+        <artifactId>aos-boot</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>aos-boot-core</artifactId>
+    <name>aos-boot-core</name>
+
+    <!--
+        Rendezvous framework LIBRARY (com.p2gether.aos.rv): subscriber/DQ membership,
+        @RvCommand dispatch, publisher/destinations, persistent command queue, FT
+        coordination. Business modules depend on this; runnable service modules
+        (aos-boot-app) aggregate business modules on top of it. Also ships the
+        rv_command_queue DDL (schema.sql) for local H2 runs.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <!-- Persistent command queue (rv_command_queue). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.tibco.tibrv</groupId>
+            <artifactId>tibrvj</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

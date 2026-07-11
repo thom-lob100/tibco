@@ -20,6 +20,19 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 [MESSO]
 ```
 
+모듈 구성:
+
+| 모듈 | 역할 |
+|---|---|
+| `aos-boot-core` | RV 프레임워크 **라이브러리** (`com.p2gether.aos.rv`) + `rv_command_queue` DDL |
+| `aos-boot-app` | **실행 모듈** (main + yml). 업무 모듈을 의존성으로 조립, `-exec` jar로 배포 |
+| `aos-boot-samples` | 데모 전용 (운영 산출물에 미포함) |
+
+**업무 모듈 추가 방법**: core에 의존하는 라이브러리 모듈(예: `aos-boot-eqp`)을 만들고
+`com.p2gether.aos.**` 하위 패키지에 `@RvCommand` 핸들러/컨트롤러를 작성한 뒤,
+`aos-boot-app`의 `<dependencies>`에 한 줄 추가하면 조립 끝 (컴포넌트 스캔 자동).
+서비스별로 핸들러 셋이 달라지면 서비스별 실행 모듈(예: `aos-eqp-app`)로 나누면 된다.
+
 | 컴포넌트 | 역할 |
 |---|---|
 | `RendezvousSubscriber` | DQ 그룹 가입, 수신 메시지를 디스패처로 전달, 핸들러 응답 자동 회신 |
