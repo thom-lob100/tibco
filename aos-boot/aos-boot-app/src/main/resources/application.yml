@@ -64,6 +64,11 @@ aos:
       # and self-addressed calls. Connection falls back to the defaults above.
       self:
         listener: "${aos.rendezvous.subject.listener}"
+      # The scheduler service (aos-boot-scheduler). Headless - its control commands
+      # are @RvCommand handlers fronted by this app's REST gateway (one HTTP port
+      # for the whole family, see SchApiController).
+      sch:
+        listener: "SCH"
       # Define more targets the same way, e.g.:
       # bill:
       #   listener: "BILL"

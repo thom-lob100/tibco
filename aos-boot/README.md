@@ -17,6 +17,11 @@ processed by exactly one instance, with automatic scheduler election and failove
 - `aos-boot-samples` — sample command handlers (`SampleCommands`, `EqpCommands`), the
   sample REST endpoint (`EqpApiController`), and demo seed data. Run demos from here:
   `mvn -pl aos-boot-samples spring-boot:run` (samples join the app via component scan)
+- `aos-boot-scheduler` — the periodic-caller service (listener `SCH`, groups
+  `AOS.SCH.DQ`/`AOS.SCH.FT`): fires scheduled outbound calls to destinations. FT mode
+  is **on by default** so exactly one instance fires the schedule; Spring's scheduler
+  still runs on standbys, so every `@Scheduled` job starts with a
+  `subscriber.isActive()` guard (see `SampleScheduledCall`)
 - `../tibrv-stub` — in-memory stub of `tibrvj` for machines without a TIBCO install:
   compiles the app AND simulates Rendezvous within one JVM (subject matching, DQ
   round-robin, request/reply) so logic can be tested locally; it cannot reach a real rvd
@@ -245,12 +250,17 @@ every request. It works both against the in-memory stub (same JVM) and a real rv
 
 ## REST gateway
 
-An embedded Tomcat (`server.port`, default 8080) coexists with the RV subscriber.
-`EqpApiController` shows the bridge pattern: an explicit endpoint per use case turns
-the HTTP request into an RV command sent to the `self` destination (this service's
-own DQ group) via `requestOnce` — one attempt, short timeout (`aos.api.rv-timeout`,
-2s) so Tomcat threads never wait out the RV retry policy — and maps the reply back
-(`OK`→200, `QUEUED`→202, `NOT_FOUND`→404, `ERROR`→502, timeout→504).
+An embedded Tomcat (`server.port`, default 8080) coexists with the RV subscriber and
+is the **single HTTP entry point for the whole service family**: child services (e.g.
+the scheduler) stay headless, expose their operations as `@RvCommand` handlers, and a
+controller in this app bridges each use case to the service's destination.
+`RvApiBridge` implements the bridge: an explicit endpoint per use case turns the HTTP
+request into an RV command via `requestOnce` — one attempt, short timeout
+(`aos.api.rv-timeout`, 2s) so Tomcat threads never wait out the RV retry policy — and
+maps the reply back (`OK`→200, `QUEUED`→202, `NOT_FOUND`→404, `ERROR`→502,
+timeout→504). Examples: `SchApiController` (app) fronts the scheduler through the
+`sch` destination (`GET /api/sch/status`); `EqpApiController` (samples) sends to
+`self`, this service's own DQ group.
 
 ## Environments (Spring profiles)
 

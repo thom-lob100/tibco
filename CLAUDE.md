@@ -10,6 +10,7 @@ This is a workspace with two sibling Maven projects (there is no root pom):
   - `aos-boot-core` — the RV framework library (`com.p2gether.aos.rv`): DQ subscriber, `@RvCommand` dispatch, publisher/destinations, DB-backed persistent command queue, FT coordination, `rv_command_queue` DDL.
   - `aos-boot-app` — the runnable service (`AosBootApplication` + profile ymls). Deployable artifact is the `-exec` classified jar; contains no sample code.
   - `aos-boot-samples` — demo handlers (`SampleCommands`, `EqpCommands`), REST gateway sample (`EqpApiController`), seed data. Excluded from the production artifact.
+  - `aos-boot-scheduler` — periodic-caller service (listener `SCH`, own main class, FT mode on by default so one active instance fires the schedule). Spring `@Scheduled` still runs on FT standbys — every periodic job must start with a `RendezvousSubscriber.isActive()` guard.
 - `tibrv-stub/` — standalone project producing a fake `com.tibco.tibrv:tibrvj:8.4.5`. Deliberately **outside the aos-boot reactor** so a normal build can never shadow a real tibrvj. Two roles: compile-only API signatures, plus an in-memory single-JVM RV simulation (subject matching, DQ round-robin, `_INBOX` request/reply) so the app actually runs without TIBCO.
 
 Detailed docs (keep them updated when behavior changes): `aos-boot/README.md` (English, feature reference), `aos-boot/USAGE.md` (Korean, config reference + production adoption checklist), `tibrv-stub/README.md`.
@@ -50,7 +51,7 @@ Outbound path: `RendezvousPublisher` sends to named destinations configured unde
 
 Two consumption modes: default DQ (all members consume, load-balanced, `scheduler-weight` picks the scheduler) vs FT active/standby (`--aos.rendezvous.ft.enabled=true`; the `active-goal` highest-`ft.weight` members consume, others stand by and get promoted on failure). See the DQ-vs-FT comparison table in USAGE.md §6.
 
-REST gateway: embedded Tomcat coexists with the RV subscriber. The bridge pattern (see `EqpApiController`) is one explicit endpoint per use case → RV command to the `self` destination via `requestOnce` (single attempt, short `aos.api.rv-timeout`, never the retrying `request()` — Tomcat threads would starve) → reply status mapped to HTTP (`OK`→200, `QUEUED`→202, `NOT_FOUND`→404, `ERROR`→502, timeout→504). Generic `POST /rv/{command}` proxies are forbidden.
+REST gateway: embedded Tomcat coexists with the RV subscriber, and `aos-boot-app` is the **single HTTP entry point for the whole service family** — child services stay headless, expose operations as `@RvCommand` handlers, and controllers in the app bridge to each service's destination (e.g. `SchApiController` → `sch` destination → the scheduler's `SCH_STATUS`). The shared bridge is `RvApiBridge`: one explicit endpoint per use case → RV command via `requestOnce` (single attempt, short `aos.api.rv-timeout`, never the retrying `request()` — Tomcat threads would starve) → reply status mapped to HTTP (`OK`→200, `QUEUED`→202, `NOT_FOUND`→404, `ERROR`→502, timeout→504). Generic `POST /rv/{command}` proxies are forbidden.
 
 Adding a business module: create a library module depending on `aos-boot-core`, put `@RvCommand` handlers/controllers under `com.p2gether.aos.**` (component scan picks them up), add one dependency line to `aos-boot-app`.
 

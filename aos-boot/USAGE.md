@@ -27,6 +27,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `aos-boot-core` | RV 프레임워크 **라이브러리** (`com.p2gether.aos.rv`) + `rv_command_queue` DDL |
 | `aos-boot-app` | **실행 모듈** (main + yml). 업무 모듈을 의존성으로 조립, `-exec` jar로 배포 |
 | `aos-boot-samples` | 데모 전용 (운영 산출물에 미포함) |
+| `aos-boot-scheduler` | 주기 호출 담당 **실행 모듈** (listener `SCH`). FT 기본 활성 — active 1대만 스케줄 실행. `@Scheduled` 잡은 `subscriber.isActive()` 가드 필수 (standby에서도 Spring 스케줄러는 돈다) |
 
 **업무 모듈 추가 방법**: core에 의존하는 라이브러리 모듈(예: `aos-boot-eqp`)을 만들고
 `com.p2gether.aos.**` 하위 패키지에 `@RvCommand` 핸들러/컨트롤러를 작성한 뒤,
@@ -45,6 +46,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `SampleCommands` | **샘플**(aos-boot-samples) — 주문 처리 예제(persistent 체이닝·트랜잭션 포함) |
 | `EqpCommands` | **샘플**(aos-boot-samples) — EAP→BOOT `EQP_STATUS` 예제: 장비마스터 상태를 REQUEST로 변경 |
 | `EqpApiController` | **샘플**(aos-boot-samples) — REST 게이트웨이: HTTP 요청을 RV command로 변환 (7장) |
+| `RvApiBridge` / `SchApiController` | **앱**(aos-boot-app) — REST 게이트웨이 공용 브리지 + 스케줄러(SCH) 제어 API (7장) |
 | `DestinationSimulator` | **테스트 도구** — 상대 시스템(MESSO 등) 흉내, 기본 비활성 |
 
 ## 2. 회사(실제 TIBCO 설치 환경) 적용 체크리스트
@@ -317,6 +319,12 @@ standby가 승격되어 항상 2대가 소비하도록 유지된다. DQ만으로
 
 내장 Tomcat(`server.port`, 기본 8080)이 RV 구독자와 같은 프로세스에 공존한다.
 패턴: **HTTP 요청 → RV command 변환 → 응답을 HTTP 상태로 매핑.**
+
+HTTP 진입점은 **aos-boot-app 하나(패밀리 단일 포트)** 다. 자식 서비스(스케줄러 등)는
+웹 서버 없이 제어 기능을 `@RvCommand`로 노출하고, app의 컨트롤러가 해당 서비스의
+destination으로 브리지한다(공용 브리지 `RvApiBridge`). 예:
+`GET /api/sch/status` → `sch` destination → 스케줄러의 `SCH_STATUS` 핸들러
+(FT active 인스턴스만 소비하므로 응답한 쪽이 곧 active).
 
 ```
 POST /api/eqp/EQ-4711/ports/P-03/status-request
