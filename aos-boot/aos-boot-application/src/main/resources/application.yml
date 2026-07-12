@@ -5,7 +5,7 @@ server:
 
 spring:
   application:
-    name: aos-boot-app
+    name: aos-boot-application
   profiles:
     # Active profile picks the environment: test | qa | real
     # e.g. --spring.profiles.active=qa
@@ -27,6 +27,14 @@ aos:
     # REST -> RV bridge: seconds to wait for the reply, single attempt (no retries);
     # failures return immediately as HTTP 404/502/504 instead of blocking Tomcat.
     rv-timeout: 2.0
+  # Scheduler role (aos-boot-scheduler) - only takes effect when this instance is
+  # launched with --aos.rendezvous.subject.listener=SCH; other roles ignore it.
+  # The SCH role should also get --aos.rendezvous.ft.enabled=true (single-active)
+  # and --spring.main.web-application-type=none (BOOT owns the family's REST port).
+  scheduler:
+    sample:
+      enabled: false
+      interval: 60 # seconds between calls
   rendezvous:
     service: "23119"
     network: ";239.11.19.99"

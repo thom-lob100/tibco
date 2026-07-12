@@ -10,14 +10,21 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>aos-boot-app</artifactId>
-    <name>aos-boot-app</name>
+    <artifactId>aos-boot-application</artifactId>
+    <name>aos-boot-application</name>
 
     <dependencies>
         <!-- Rendezvous framework (subscriber, dispatch, publisher, persistent queue, FT). -->
         <dependency>
             <groupId>com.p2gether.aos</groupId>
             <artifactId>aos-boot-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Scheduler role: beans activate only when launched with
+             subject.listener=SCH, so the single jar serves every role. -->
+        <dependency>
+            <groupId>com.p2gether.aos</groupId>
+            <artifactId>aos-boot-scheduler</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- REST gateway coexisting with the RV subscriber (embedded Tomcat). -->

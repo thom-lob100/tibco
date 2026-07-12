@@ -19,9 +19,9 @@
 
     <modules>
         <module>aos-boot-core</module>
-        <module>aos-boot-app</module>
-        <module>aos-boot-samples</module>
         <module>aos-boot-scheduler</module>
+        <module>aos-boot-application</module>
+        <module>aos-boot-samples</module>
     </modules>
 
     <properties>

@@ -25,14 +25,18 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | 모듈 | 역할 |
 |---|---|
 | `aos-boot-core` | RV 프레임워크 **라이브러리** (`com.p2gether.aos.rv`) + `rv_command_queue` DDL |
-| `aos-boot-app` | **실행 모듈** (main + yml). 업무 모듈을 의존성으로 조립, `-exec` jar로 배포 |
+| `aos-boot-application` | **유일한 실행/배포 단위** (main + yml, `-exec` jar). 역할(role) 모듈들을 의존성으로 조립하고, 기동 인자 `--aos.rendezvous.subject.listener=<역할>`이 인스턴스의 역할을 결정 |
+| `aos-boot-scheduler` | 주기 호출 역할 **라이브러리 모듈**. listener가 `SCH`일 때만 빈이 활성화(`SchedulerConfiguration`) — 다른 역할에서는 스케줄이 절대 돌지 않음. `@Scheduled` 잡은 `subscriber.isActive()` 가드 필수 (FT standby에서도 Spring 스케줄러는 돈다) |
 | `aos-boot-samples` | 데모 전용 (운영 산출물에 미포함) |
-| `aos-boot-scheduler` | 주기 호출 담당 **실행 모듈** (listener `SCH`). FT 기본 활성 — active 1대만 스케줄 실행. `@Scheduled` 잡은 `subscriber.isActive()` 가드 필수 (standby에서도 Spring 스케줄러는 돈다) |
+
+**운영 배치**: 폴더를 역할(listener)별로 나누고, 각 폴더에서 같은
+`aos-boot-application-*-exec.jar`를 역할에 맞는 인자로 기동한다 (6장). 역할별 켜야
+할 기능은 `SchedulerConfiguration`처럼 listener 조건으로 코드에서 게이트한다.
 
 **업무 모듈 추가 방법**: core에 의존하는 라이브러리 모듈(예: `aos-boot-eqp`)을 만들고
 `com.p2gether.aos.**` 하위 패키지에 `@RvCommand` 핸들러/컨트롤러를 작성한 뒤,
-`aos-boot-app`의 `<dependencies>`에 한 줄 추가하면 조립 끝 (컴포넌트 스캔 자동).
-서비스별로 핸들러 셋이 달라지면 서비스별 실행 모듈(예: `aos-eqp-app`)로 나누면 된다.
+`aos-boot-application`의 `<dependencies>`에 한 줄 추가하면 조립 끝 (컴포넌트 스캔 자동).
+특정 역할에서만 활성화돼야 하면 `aos-boot-scheduler`처럼 listener 조건을 건다.
 
 | 컴포넌트 | 역할 |
 |---|---|
@@ -46,7 +50,8 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `SampleCommands` | **샘플**(aos-boot-samples) — 주문 처리 예제(persistent 체이닝·트랜잭션 포함) |
 | `EqpCommands` | **샘플**(aos-boot-samples) — EAP→BOOT `EQP_STATUS` 예제: 장비마스터 상태를 REQUEST로 변경 |
 | `EqpApiController` | **샘플**(aos-boot-samples) — REST 게이트웨이: HTTP 요청을 RV command로 변환 (7장) |
-| `RvApiBridge` / `SchApiController` | **앱**(aos-boot-app) — REST 게이트웨이 공용 브리지 + 스케줄러(SCH) 제어 API (7장) |
+| `RvApiBridge` / `SchApiController` | **앱**(aos-boot-application) — REST 게이트웨이 공용 브리지 + 스케줄러(SCH) 제어 API (7장) |
+| `SchedulerConfiguration` / `SchedulerCommands` / `SampleScheduledCall` | **SCH 역할**(aos-boot-scheduler) — listener=SCH 게이트, `SCH_STATUS` 제어 command, 주기 호출 예제(기본 비활성) |
 | `DestinationSimulator` | **테스트 도구** — 상대 시스템(MESSO 등) 흉내, 기본 비활성 |
 
 ## 2. 회사(실제 TIBCO 설치 환경) 적용 체크리스트
@@ -75,9 +80,9 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
    `destinations`에 상대 시스템(MESSO 등)의 실제 연결값, `subject.listener`에
    이 서비스의 실제 이름.
 5. **샘플 분리 (구조로 해결됨)** — 샘플 코드와 데모 시드는 `aos-boot-samples` 모듈에만
-   있고, 운영 산출물(`aos-boot-app-*-exec.jar`)에는 포함되지 않는다. 실제 업무 핸들러는
-   `aos-boot-app`(또는 별도 업무 모듈)에 작성하면 된다. `DestinationSimulator`는 앱에
-   있지만 기본 비활성(연동 리허설용).
+   있고, 운영 산출물(`aos-boot-application-*-exec.jar`)에는 포함되지 않는다. 실제 업무
+   핸들러는 별도 업무 모듈(또는 `aos-boot-application`)에 작성하면 된다.
+   `DestinationSimulator`는 앱에 있지만 기본 비활성(연동 리허설용).
 
 ## 3. 설정 레퍼런스 (`application.yml`)
 
@@ -245,19 +250,25 @@ TibrvMsg reply = publisher.request("messo", "ORDER_CREATE", payload, 10.0);
 
 ## 6. 실행·운영
 
-운영 산출물은 `aos-boot-app-<버전>-exec.jar`(샘플 미포함)이고, 아래 예시의
-`aos-boot-app.jar`는 이를 줄여 쓴 것이다. 샘플 포함 데모는
+운영 산출물은 `aos-boot-application-<버전>-exec.jar`(샘플 미포함) **하나**이고, 아래
+예시의 `app.jar`는 이를 줄여 쓴 것이다. 역할(listener)별로 폴더를 나눠 같은 jar를
+역할에 맞는 인자로 기동한다. 샘플 포함 데모는
 `mvn -pl aos-boot-samples spring-boot:run`으로 실행한다.
 
 ```bash
-# 기본: test 환경, listener BOOT, DQ AOS.BOOT.DQ
-java -jar aos-boot-app.jar
+# 기본: test 환경, listener BOOT, DQ AOS.BOOT.DQ (패밀리의 REST 포트 담당)
+java -jar app.jar
 
 # QA의 OIS 역할 인스턴스 (subject/DQ가 함께 바뀜)
-java -jar aos-boot-app.jar --spring.profiles.active=qa --aos.rendezvous.subject.listener=OIS
+java -jar app.jar --spring.profiles.active=qa --aos.rendezvous.subject.listener=OIS
 
 # 같은 DQ 그룹 두 번째 멤버 (스케줄러 우선순위만 낮게)
-java -jar aos-boot-app.jar --aos.rendezvous.dq.scheduler-weight=1
+java -jar app.jar --aos.rendezvous.dq.scheduler-weight=1
+
+# SCH(주기 호출) 역할: 스케줄러 빈은 listener=SCH일 때만 활성화된다.
+# FT 필수(1대만 실행), 웹은 끔(REST 포트는 BOOT 역할 담당)
+java -jar app.jar --aos.rendezvous.subject.listener=SCH \
+    --aos.rendezvous.ft.enabled=true --spring.main.web-application-type=none
 ```
 
 - 같은 listener(=같은 DQ 이름)로 띄운 인스턴스들이 한 그룹: 메시지당 1개 멤버만 처리,
@@ -272,9 +283,9 @@ DQ가 "모든 멤버가 나눠 처리"라면, FT는 "**weight 높은 active-goal
 
 ```bash
 # active 우선 인스턴스
-java -jar aos-boot-app.jar --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=2
+java -jar app.jar --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=2
 # standby 인스턴스 (active가 죽으면 자동 승격)
-java -jar aos-boot-app.jar --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=1
+java -jar app.jar --aos.rendezvous.ft.enabled=true --aos.rendezvous.ft.weight=1
 ```
 
 - FT 그룹 이름은 `AOS.<listener>.FT`로 자동 파생 (listener를 바꾸면 함께 바뀜).
@@ -320,11 +331,12 @@ standby가 승격되어 항상 2대가 소비하도록 유지된다. DQ만으로
 내장 Tomcat(`server.port`, 기본 8080)이 RV 구독자와 같은 프로세스에 공존한다.
 패턴: **HTTP 요청 → RV command 변환 → 응답을 HTTP 상태로 매핑.**
 
-HTTP 진입점은 **aos-boot-app 하나(패밀리 단일 포트)** 다. 자식 서비스(스케줄러 등)는
-웹 서버 없이 제어 기능을 `@RvCommand`로 노출하고, app의 컨트롤러가 해당 서비스의
-destination으로 브리지한다(공용 브리지 `RvApiBridge`). 예:
-`GET /api/sch/status` → `sch` destination → 스케줄러의 `SCH_STATUS` 핸들러
-(FT active 인스턴스만 소비하므로 응답한 쪽이 곧 active).
+HTTP 진입점은 **BOOT 역할 인스턴스 하나(패밀리 단일 포트)** 다. 다른 역할(SCH 등)은
+웹 없이 기동하고(`--spring.main.web-application-type=none`) 제어 기능을
+`@RvCommand`로 노출하며, BOOT의 컨트롤러가 해당 역할의 destination으로
+브리지한다(공용 브리지 `RvApiBridge`). 예: `GET /api/sch/status` → `sch`
+destination → SCH 역할의 `SCH_STATUS` 핸들러 (FT active 인스턴스만 소비하므로
+응답한 쪽이 곧 active).
 
 ```
 POST /api/eqp/EQ-4711/ports/P-03/status-request

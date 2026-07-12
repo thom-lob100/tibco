@@ -13,19 +13,16 @@
     <artifactId>aos-boot-scheduler</artifactId>
     <name>aos-boot-scheduler</name>
 
+    <!--
+        Library module implementing the scheduler role (periodic outbound calls).
+        Assembled into aos-boot-application; its beans activate only when the
+        instance is launched with subject.listener=SCH (see SchedulerConfiguration).
+    -->
     <dependencies>
-        <!-- Rendezvous framework (subscriber, dispatch, publisher, persistent queue, FT). -->
         <dependency>
             <groupId>com.p2gether.aos</groupId>
             <artifactId>aos-boot-core</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <!-- Local H2 backing the persistent queue; point spring.datasource at the
-             real database in production. -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -33,18 +30,4 @@
             <optional>true</optional>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <!-- Same convention as aos-boot-app: the runnable jar gets the -exec
-                     classifier, the plain jar stays the main artifact. -->
-                <configuration>
-                    <classifier>exec</classifier>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>

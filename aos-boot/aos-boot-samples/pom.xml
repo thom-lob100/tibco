@@ -15,18 +15,18 @@
 
     <!--
         Sample command handlers, REST endpoint, and demo seed data on top of
-        aos-boot-app. Run demos from THIS module (the samples land on the classpath
-        and are picked up by AosBootApplication's component scan):
+        aos-boot-application. Run demos from THIS module (the samples land on the
+        classpath and are picked up by AosBootApplication's component scan):
 
           mvn -pl aos-boot-samples spring-boot:run
 
-        The production artifact stays aos-boot-app's -exec jar, which contains
-        none of these samples.
+        The production artifact stays aos-boot-application's -exec jar, which
+        contains none of these samples.
     -->
     <dependencies>
         <dependency>
             <groupId>com.p2gether.aos</groupId>
-            <artifactId>aos-boot-app</artifactId>
+            <artifactId>aos-boot-application</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

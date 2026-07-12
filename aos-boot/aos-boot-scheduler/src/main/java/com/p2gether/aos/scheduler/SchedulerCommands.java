@@ -3,16 +3,16 @@ package com.p2gether.aos.scheduler;
 import com.p2gether.aos.rv.RvCommand;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
 
 /**
- * Control commands of this service, reached over RV — e.g. from the aos-boot-app
- * REST gateway (the family's single HTTP port) through its {@code sch} destination.
+ * Control commands of this role, reached over RV — e.g. from the BOOT role's REST
+ * gateway (the family's single HTTP port) through its {@code sch} destination.
  * In FT mode only the active instance consumes, so the replying member is by
- * definition the active one.
+ * definition the active one. Registered by {@link SchedulerConfiguration} only in
+ * the SCH role.
  */
-@Component
+@RequiredArgsConstructor
 public class SchedulerCommands {
 
     public record SchStatusReply(String status, String service, String host,
@@ -20,12 +20,6 @@ public class SchedulerCommands {
 
     private final boolean sampleEnabled;
     private final long sampleInterval;
-
-    public SchedulerCommands(@Value("${aos.scheduler.sample.enabled:false}") boolean sampleEnabled,
-                             @Value("${aos.scheduler.sample.interval:60}") long sampleInterval) {
-        this.sampleEnabled = sampleEnabled;
-        this.sampleInterval = sampleInterval;
-    }
 
     /** Reports which instance is active and how the sample job is configured. */
     @RvCommand("SCH_STATUS")

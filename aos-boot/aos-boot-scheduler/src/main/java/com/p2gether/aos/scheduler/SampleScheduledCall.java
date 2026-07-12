@@ -8,27 +8,24 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 /**
  * Example of the pattern this module exists for: every
  * {@code aos.scheduler.sample.interval} seconds the FT-active instance sends a command
  * to a destination and logs the reply.
  *
- * <p>Spring's scheduler runs on every instance, FT standbys included — the
+ * <p>Spring's scheduler runs on every SCH instance, FT standbys included — the
  * {@link RendezvousSubscriber#isActive()} guard is what restricts the actual call to
  * the active member, so every periodic job must start with it.
  *
- * <p>Disabled by default; enable with {@code aos.scheduler.sample.enabled=true} (pair
- * with {@code aos.rendezvous.destination-simulator.enabled=true} to get replies
- * without a real MESSO).
+ * <p>Registered by {@link SchedulerConfiguration} only in the SCH role, and disabled
+ * by default; enable with {@code aos.scheduler.sample.enabled=true} (pair with
+ * {@code aos.rendezvous.destination-simulator.enabled=true} to get replies without a
+ * real MESSO).
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "aos.scheduler.sample.enabled", havingValue = "true")
 public class SampleScheduledCall {
 
     private final RendezvousSubscriber subscriber;

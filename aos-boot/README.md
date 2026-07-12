@@ -10,18 +10,21 @@ processed by exactly one instance, with automatic scheduler election and failove
 - `aos-boot-core` — the Rendezvous framework library (`com.p2gether.aos.rv`): DQ
   subscriber, @RvCommand dispatch, publisher/destinations, persistent command queue,
   FT coordination, plus the `rv_command_queue` DDL. Business modules depend on this
-- `aos-boot-app` — the runnable service (main class + configuration); joins DQ
-  `AOS.BOOT.DQ` on subject `P2.TEST.*.*.BOOT.*` (service `23119`, network
-  `;239.11.19.99`, daemon `tcp:7500`). Aggregates business modules as dependencies;
-  the deployable artifact is the `-exec` classified jar and contains no sample code
+- `aos-boot-application` — **the one runnable and deployable unit** (main class +
+  configuration, `-exec` classified jar, no sample code). Aggregates the role modules
+  as dependencies; the launch argument `--aos.rendezvous.subject.listener=<ROLE>`
+  decides what an instance is (default `BOOT`: DQ `AOS.BOOT.DQ` on subject
+  `P2.TEST.*.*.BOOT.*`, service `23119`, network `;239.11.19.99`, daemon `tcp:7500`).
+  In production each role runs from its own folder with its own arguments
+- `aos-boot-scheduler` — **library module** implementing the scheduler role (periodic
+  outbound calls). Its beans exist only when the instance is launched with listener
+  `SCH` (`SchedulerConfiguration`), so the schedule cannot leak into other roles. Run
+  SCH with FT enabled — one active instance fires, standbys take over — and note that
+  Spring's scheduler still runs on FT standbys, so every `@Scheduled` job starts with
+  a `subscriber.isActive()` guard (see `SampleScheduledCall`)
 - `aos-boot-samples` — sample command handlers (`SampleCommands`, `EqpCommands`), the
   sample REST endpoint (`EqpApiController`), and demo seed data. Run demos from here:
   `mvn -pl aos-boot-samples spring-boot:run` (samples join the app via component scan)
-- `aos-boot-scheduler` — the periodic-caller service (listener `SCH`, groups
-  `AOS.SCH.DQ`/`AOS.SCH.FT`): fires scheduled outbound calls to destinations. FT mode
-  is **on by default** so exactly one instance fires the schedule; Spring's scheduler
-  still runs on standbys, so every `@Scheduled` job starts with a
-  `subscriber.isActive()` guard (see `SampleScheduledCall`)
 - `../tibrv-stub` — in-memory stub of `tibrvj` for machines without a TIBCO install:
   compiles the app AND simulates Rendezvous within one JVM (subject matching, DQ
   round-robin, request/reply) so logic can be tested locally; it cannot reach a real rvd
