@@ -163,6 +163,31 @@ aos:
 - DQ 이름은 `AOS.<listener>.DQ`로 자동 파생: `--aos.rendezvous.subject.listener=OIS`
   하나로 subject와 DQ 그룹이 함께 바뀐다.
 
+### 상태 파일 (외부 도구 연동, `aos.status.file`)
+
+`--aos.status.file=<경로>`를 주면 인스턴스가 **자기 역할을 작은 JSON 파일로 주기적으로
+기록**한다. RV·관리 HTTP 포트 없이 로컬 파일만 읽어 상태를 알고 싶은 외부 도구
+(예: modern-patch 에이전트)를 위한 것이다. 지정하지 않으면 기능 자체가 꺼진다.
+
+```bash
+java -jar app.jar ... --aos.status.file=./logs/boot.status.json
+# 갱신 주기(초)는 --aos.status.interval=3 (기본 3초)
+```
+
+기록 내용(핵심은 `role`):
+
+```json
+{ "listener": "BOOT", "mode": "DQ", "role": "active", "consuming": true,
+  "dqName": "AOS.BOOT.DQ", "ftGroup": null, "ftWeight": null,
+  "schedulerWeight": 1, "host": "SVR01", "pid": 281204,
+  "updatedAtEpochMillis": 1783851740023, "updatedAt": "2026-07-12T10:22:20Z" }
+```
+
+- `role`: 지금 소비 중이면 `active`, FT standby로 대기 중이면 `standby`.
+  FT 승격/강등이 일어나면 다음 갱신 주기(≤ interval초) 안에 반영된다.
+- 파일은 임시파일에 쓴 뒤 원자적 교체(`ATOMIC_MOVE`)하므로 읽는 쪽이 반쪽짜리를 보지 않는다.
+- best-effort다 — 파일 쓰기 실패가 서비스 동작을 방해하지 않는다.
+
 ## 4. 수신 — @RvCommand 핸들러
 
 아무 Spring 빈의 메서드에 `@RvCommand`를 붙이면 subject의 마지막 element(command)로

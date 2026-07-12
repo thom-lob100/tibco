@@ -96,6 +96,17 @@ when a standby is promoted (ACTIVATE) and starts consuming. Configure per instan
 with `--aos.rendezvous.ft.weight=2` (preferred active) / `=1` (standby). With
 `active-goal > 1`, the N active members still load-balance through the DQ.
 
+## Status file (external-tool integration)
+
+`--aos.status.file=<path>` makes an instance periodically write its live role to a
+small JSON file, so a Rendezvous-independent tool can read it straight off the local
+filesystem — no management HTTP port, no RV client. Disabled unless set; refresh
+interval is `--aos.status.interval` seconds (default 3). The key field is `role`
+(`active` while consuming, `standby` while an FT standby waits); an FT
+promotion/demotion appears within one interval. The file is written to a temp file
+and atomically renamed, and writing is best-effort (a failure never disturbs the
+service). See USAGE.md §3 for the full field list.
+
 ## Command dispatch (@RvCommand)
 
 Each message assigned to this DQ member is routed by its **command element** (the last
