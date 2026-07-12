@@ -54,4 +54,13 @@ public class SchedulerConfiguration {
                                             RendezvousPublisher publisher) {
         return new SampleScheduledCall(subscriber, publisher);
     }
+
+    @Bean
+    @ConditionalOnProperty(name = "aos.scheduler.order-create.enabled", havingValue = "true")
+    OrderCreateScheduledCall orderCreateScheduledCall(
+            RendezvousSubscriber subscriber,
+            RendezvousPublisher publisher,
+            @Value("${aos.scheduler.order-create.destination:self}") String destination) {
+        return new OrderCreateScheduledCall(subscriber, publisher, destination);
+    }
 }

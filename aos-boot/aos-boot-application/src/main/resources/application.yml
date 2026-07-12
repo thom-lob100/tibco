@@ -35,6 +35,17 @@ aos:
     sample:
       enabled: false
       interval: 60 # seconds between calls
+    # Example driving a samples handler (SampleCommands.orderCreate) on a schedule:
+    # send ORDER_CREATE to the destination below every 5 minutes. One-JVM demo on
+    # the stub bus (samples handlers + schedule in the same SCH instance,
+    # destination 'self' loops back through RV):
+    #   mvn -pl aos-boot-samples spring-boot:run -Dspring-boot.run.arguments="--aos.rendezvous.subject.listener=SCH --aos.scheduler.order-create.enabled=true"
+    order-create:
+      enabled: false
+      interval: 300 # seconds between calls (5 minutes)
+      # 'self' = this instance's own DQ; when the handlers run in another role,
+      # define that role under aos.rendezvous.destinations and name it here.
+      destination: self
   rendezvous:
     service: "23119"
     network: ";239.11.19.99"

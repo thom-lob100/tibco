@@ -52,6 +52,7 @@ TIBCO Rendezvous(RV) 기반 분산 큐(DQ) 서비스 골격의 상세 사용법.
 | `EqpApiController` | **샘플**(aos-boot-samples) — REST 게이트웨이: HTTP 요청을 RV command로 변환 (7장) |
 | `RvApiBridge` / `SchApiController` | **앱**(aos-boot-application) — REST 게이트웨이 공용 브리지 + 스케줄러(SCH) 제어 API (7장) |
 | `SchedulerConfiguration` / `SchedulerCommands` / `SampleScheduledCall` | **SCH 역할**(aos-boot-scheduler) — listener=SCH 게이트, `SCH_STATUS` 제어 command, 주기 호출 예제(기본 비활성) |
+| `OrderCreateScheduledCall` | **SCH 역할**(aos-boot-scheduler) — 샘플 핸들러(`SampleCommands.orderCreate`)를 5분 주기로 RV 호출하는 예제. `aos.scheduler.order-create.enabled=true`로 활성화, 대상은 `destination` 설정(기본 `self`) |
 | `DestinationSimulator` | **테스트 도구** — 상대 시스템(MESSO 등) 흉내, 기본 비활성 |
 
 ## 2. 회사(실제 TIBCO 설치 환경) 적용 체크리스트

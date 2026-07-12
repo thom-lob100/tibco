@@ -21,7 +21,8 @@ processed by exactly one instance, with automatic scheduler election and failove
   `SCH` (`SchedulerConfiguration`), so the schedule cannot leak into other roles. Run
   SCH with FT enabled — one active instance fires, standbys take over — and note that
   Spring's scheduler still runs on FT standbys, so every `@Scheduled` job starts with
-  a `subscriber.isActive()` guard (see `SampleScheduledCall`)
+  a `subscriber.isActive()` guard (see `SampleScheduledCall`; `OrderCreateScheduledCall`
+  shows the same pattern driving a samples handler — `ORDER_CREATE` every 5 minutes)
 - `aos-boot-samples` — sample command handlers (`SampleCommands`, `EqpCommands`), the
   sample REST endpoint (`EqpApiController`), and demo seed data. Run demos from here:
   `mvn -pl aos-boot-samples spring-boot:run` (samples join the app via component scan)
