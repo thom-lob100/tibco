@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-This is a workspace with two sibling Maven projects (there is no root pom):
+This is a workspace with two Java Maven projects plus one standalone .NET Framework solution (there is no root build):
 
 - `aos-boot/` — Spring Boot 4.1 multi-module project: a TIBCO Rendezvous (RV) distributed-queue service skeleton.
   - `aos-boot-core` — the RV framework library (`com.p2gether.aos.rv`): DQ subscriber, `@RvCommand` dispatch, publisher/destinations, DB-backed persistent command queue, FT coordination, `rv_command_queue` DDL.
@@ -12,6 +12,7 @@ This is a workspace with two sibling Maven projects (there is no root pom):
   - `aos-boot-scheduler` — **library module** for the scheduler role: beans exist only when launched with listener `SCH` (`SchedulerConfiguration` gate), so scheduled work cannot leak into other roles. The SCH role must be launched with FT enabled (single active) and usually `--spring.main.web-application-type=none`. Spring `@Scheduled` still runs on FT standbys — every periodic job must start with a `RendezvousSubscriber.isActive()` guard.
   - `aos-boot-samples` — demo handlers (`SampleCommands`, `EqpCommands`), REST gateway sample (`EqpApiController`), seed data. Excluded from the production artifact.
 - `tibrv-stub/` — standalone project producing a fake `com.tibco.tibrv:tibrvnative:8.4.5`. Deliberately **outside the aos-boot reactor** so a normal build can never shadow the company's real `tibrvnative.jar`. Two roles: compile-only API signatures, plus an in-memory single-JVM RV simulation (subject matching, DQ round-robin, `_INBOX` request/reply) so the app actually runs without TIBCO.
+- `aos-boot-dotnet/` — Visual Studio `.NET Framework 4.8`/x64 solution. `Aos.Rendezvous.Client` calls the Java service with the company-installed `TIBCO.Rendezvous.dll`; `Aos.Rendezvous.Sample` demonstrates `SCH_STATUS`. It uses the same six-element subject and field conventions as `aos-boot`, but cannot use Java's `tibrvnative.jar`.
 
 Detailed docs (keep them updated when behavior changes): `aos-boot/README.md` (English, feature reference), `aos-boot/USAGE.md` (Korean, config reference + production adoption checklist), `tibrv-stub/README.md`.
 

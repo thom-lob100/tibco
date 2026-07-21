@@ -1,6 +1,12 @@
 # Build output
 target/
 
+# .NET build output
+bin/
+obj/
+.vs/
+*.user
+
 # Persistent-queue local H2 database
 data/
 *.mv.db
