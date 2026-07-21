@@ -1,5 +1,7 @@
 # REAL (production) environment. Environment-specific overrides (daemon, network, ...) go here.
 aos:
   rendezvous:
+    # A REAL deployment must use the company-installed tibrvnative.jar, never tibrv-stub.
+    require-native: true
     subject:
       environment: "REAL"

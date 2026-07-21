@@ -32,7 +32,7 @@
         </dependency>
         <dependency>
             <groupId>com.tibco.tibrv</groupId>
-            <artifactId>tibrvj</artifactId>
+            <artifactId>tibrvnative</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

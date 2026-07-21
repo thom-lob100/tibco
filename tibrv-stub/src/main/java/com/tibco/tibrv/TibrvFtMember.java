@@ -14,13 +14,13 @@ public class TibrvFtMember {
     public static final int DEACTIVATE = 3;
 
     private final TibrvQueue queue;
-    private final TibrvFtCallback callback;
+    private final TibrvFtMemberCallback callback;
     private final String busKey;
     private final String groupName;
     private final int weight;
     private final int activeGoal;
 
-    public TibrvFtMember(TibrvQueue queue, TibrvFtCallback callback, TibrvTransport transport,
+    public TibrvFtMember(TibrvQueue queue, TibrvFtMemberCallback callback, TibrvTransport transport,
                          String groupName, int weight, int activeGoal,
                          double heartbeatInterval, double preparationInterval, double activationInterval,
                          Object closure) throws TibrvException {

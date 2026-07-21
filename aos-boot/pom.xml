@@ -27,11 +27,12 @@
     <properties>
         <java.version>25</java.version>
         <!--
-            tibrvj.jar is proprietary and NOT on Maven Central. Install it once from a real
+            tibrvnative.jar is proprietary and NOT on Maven Central. Install it once from the real
             TIBCO Rendezvous installation:
-              mvn install:install-file -Dfile="<TIBRV_HOME>/lib/tibrvj.jar"
-                -DgroupId=com.tibco.tibrv -DartifactId=tibrvj -Dversion=8.4.5 -Dpackaging=jar
+              mvn install:install-file -Dfile="<TIBRV_HOME>/lib/tibrvnative.jar"
+                -DgroupId=com.tibco.tibrv -DartifactId=tibrvnative -Dversion=<COMPANY_RV_VERSION> -Dpackaging=jar
         -->
+        <!-- Set this to the version of the company-installed tibrvnative.jar. -->
         <tibrv.version>8.4.5</tibrv.version>
     </properties>
 
@@ -39,7 +40,7 @@
         <dependencies>
             <dependency>
                 <groupId>com.tibco.tibrv</groupId>
-                <artifactId>tibrvj</artifactId>
+                <artifactId>tibrvnative</artifactId>
                 <version>${tibrv.version}</version>
             </dependency>
         </dependencies>

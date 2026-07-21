@@ -17,13 +17,18 @@ public final class Tibrv {
 
     public static void open(int implementation) throws TibrvException {
         if (OPEN_COUNT.getAndIncrement() == 0) {
-            System.err.println("[tibrvj-stub] In-memory Rendezvous stub active - "
+            System.err.println("[tibrvnative-stub] In-memory Rendezvous stub active - "
                     + "JVM-local delivery only, NOT the real TIBCO library");
         }
     }
 
     public static boolean isValid() {
         return OPEN_COUNT.get() > 0;
+    }
+
+    /** The development stub is deliberately never a real JNI implementation. */
+    public static boolean isNativeImpl() {
+        return false;
     }
 
     public static void close() throws TibrvException {

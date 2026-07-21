@@ -93,18 +93,19 @@ public class RvPersistentCommandQueue {
         KeyHolder key = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement statement = connection.prepareStatement(
-                    "INSERT INTO rv_command_queue (command, subject, payload, status, attempts,"
+                    "INSERT INTO rv_command_queue (command, listener, subject, payload, status, attempts,"
                             + " max_attempts, next_attempt_at, created_at, updated_at)"
-                            + " VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)",
+                            + " VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS);
             statement.setString(1, command);
-            statement.setString(2, message.getSendSubject());
-            statement.setString(3, payload);
-            statement.setString(4, status);
-            statement.setInt(5, maxAttempts);
-            statement.setTimestamp(6, now);
+            statement.setString(2, propertiesProvider.getObject().getSubject().getListener());
+            statement.setString(3, message.getSendSubject());
+            statement.setString(4, payload);
+            statement.setString(5, status);
+            statement.setInt(6, maxAttempts);
             statement.setTimestamp(7, now);
             statement.setTimestamp(8, now);
+            statement.setTimestamp(9, now);
             return statement;
         }, key);
         return Objects.requireNonNull(key.getKey(), "no generated id").longValue();
@@ -146,12 +147,13 @@ public class RvPersistentCommandQueue {
             Timestamp now = Timestamp.from(Instant.now());
             Timestamp staleBefore = Timestamp.from(
                     Instant.now().minusMillis((long) (config().getProcessingTimeout() * 1000)));
+            int batchSize = Math.max(1, config().getBatchSize());
             List<Long> due = jdbc.queryForList(
                     "SELECT id FROM rv_command_queue"
-                            + " WHERE (status = 'PENDING' AND next_attempt_at <= ?)"
+                            + " WHERE listener = ? AND ((status = 'PENDING' AND next_attempt_at <= ?)"
                             + " OR (status = 'PROCESSING' AND updated_at < ?)"
-                            + " ORDER BY id LIMIT ?",
-                    Long.class, now, staleBefore, config().getBatchSize());
+                            + ") ORDER BY id FETCH FIRST " + batchSize + " ROWS ONLY",
+                    Long.class, propertiesProvider.getObject().getSubject().getListener(), now, staleBefore);
             due.forEach(id -> claimAndProcess(id, now, staleBefore));
         } catch (Exception exception) {
             log.error("Persistent queue poll failed", exception);
@@ -161,9 +163,10 @@ public class RvPersistentCommandQueue {
     private void claimAndProcess(long id, Timestamp now, Timestamp staleBefore) {
         int claimed = jdbc.update(
                 "UPDATE rv_command_queue SET status = 'PROCESSING', updated_at = ?"
-                        + " WHERE id = ? AND ((status = 'PENDING' AND next_attempt_at <= ?)"
+                        + " WHERE id = ? AND listener = ? AND ((status = 'PENDING' AND next_attempt_at <= ?)"
                         + " OR (status = 'PROCESSING' AND updated_at < ?))",
-                Timestamp.from(Instant.now()), id, now, staleBefore);
+                Timestamp.from(Instant.now()), id,
+                propertiesProvider.getObject().getSubject().getListener(), now, staleBefore);
         if (claimed != 1) {
             return; // another instance took it
         }

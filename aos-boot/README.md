@@ -26,7 +26,7 @@ processed by exactly one instance, with automatic scheduler election and failove
 - `aos-boot-samples` — sample command handlers (`SampleCommands`, `EqpCommands`), the
   sample REST endpoint (`EqpApiController`), and demo seed data. Run demos from here:
   `mvn -pl aos-boot-samples spring-boot:run` (samples join the app via component scan)
-- `../tibrv-stub` — in-memory stub of `tibrvj` for machines without a TIBCO install:
+- `../tibrv-stub` — in-memory stub of `tibrvnative` for machines without a TIBCO install:
   compiles the app AND simulates Rendezvous within one JVM (subject matching, DQ
   round-robin, request/reply) so logic can be tested locally; it cannot reach a real rvd
 
@@ -35,17 +35,17 @@ processed by exactly one instance, with automatic scheduler election and failove
 1. JDK 25, Maven, Eclipse (m2e + Lombok plugin installed in the IDE).
 2. Without a TIBCO install: `mvn -f ../tibrv-stub/pom.xml clean install` once — the app then
    compiles and can be run against the JVM-local in-memory bus (single process only; a
-   `[tibrvj-stub]` warning is printed at startup).
-3. To **run against real Rendezvous**, the genuine `tibrvj.jar` from a TIBCO Rendezvous 8.4.x
+   `[tibrvnative-stub]` warning is printed at startup).
+3. To **run against real Rendezvous**, install the company's genuine `tibrvnative.jar`
    installation must replace the stub in the local Maven repository:
 
    ```
-   mvn install:install-file -Dfile="<TIBRV_HOME>/lib/tibrvj.jar" ^
-       -DgroupId=com.tibco.tibrv -DartifactId=tibrvj -Dversion=8.4.5 -Dpackaging=jar
+   mvn install:install-file -Dfile="<TIBRV_HOME>/lib/tibrvnative.jar" ^
+       -DgroupId=com.tibco.tibrv -DartifactId=tibrvnative -Dversion=<COMPANY_RV_VERSION> -Dpackaging=jar
    ```
 
    `<TIBRV_HOME>\bin` must also be on `PATH` (native libraries), and the `rvd` daemon
-   reachable at `tcp:7500`.
+   reachable at `tcp:7500`. Build and launch with `--spring.profiles.active=real`; that profile rejects the stub.
 
 ## Run two DQ members in Eclipse
 

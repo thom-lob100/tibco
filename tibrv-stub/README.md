@@ -1,19 +1,19 @@
-# tibrvj — compile-only API stub
+# tibrvnative — development API stub
 
 This is **not** the TIBCO Rendezvous library. It is a tiny standalone Maven project that produces an
-artifact with the same coordinates as the real one — `com.tibco.tibrv:tibrvj:8.4.5` — but containing
-**only the API signatures** that `aos-boot` compiles against (reliable messaging plus the
+artifact with the same coordinates as the company JNI implementation —
+`com.tibco.tibrv:tibrvnative:8.4.5` — but containing API signatures and a JVM-local test bus
+that `aos-boot` compiles and locally exercises against (reliable messaging plus the
 certified-messaging / distributed-queue classes: `TibrvCmTransport`, `TibrvCmQueueTransport`,
-`TibrvCmListener`). Every method body throws `UnsupportedOperationException`; there is no Rendezvous
-implementation and no TIBCO code here.
+`TibrvCmListener`). It contains no TIBCO code and cannot communicate with a real `rvd` or another JVM.
 
 Originally copied from `smartaos-boot/ci/tibrv-stub`; this copy is a superset of that one, so
 installing it keeps `smartaos-boot` compiling too.
 
 ## Why it exists
 
-`tibrvj.jar` is proprietary and cannot be redistributed. This stub lets a machine without a TIBCO
-installation verify that the Rendezvous layer still **compiles**. It cannot run Rendezvous messaging.
+`tibrvnative.jar` is proprietary and cannot be redistributed. This stub lets a machine without a TIBCO
+installation compile and test application logic in one JVM. It is never a native RV implementation.
 
 ## How to install it
 
@@ -28,8 +28,8 @@ Developers with a real TIBCO installation must install the **genuine** jar under
 which overrides this stub in their local repository:
 
 ```bash
-mvn install:install-file -Dfile=/path/to/tibrvj.jar \
-  -DgroupId=com.tibco.tibrv -DartifactId=tibrvj -Dversion=8.4.5 -Dpackaging=jar
+mvn install:install-file -Dfile=/path/to/tibrvnative.jar \
+  -DgroupId=com.tibco.tibrv -DartifactId=tibrvnative -Dversion=<COMPANY_RV_VERSION> -Dpackaging=jar
 ```
 
 This project is deliberately **outside the `aos-boot` reactor** (its `pom.xml` does not list it as a

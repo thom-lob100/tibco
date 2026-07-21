@@ -11,13 +11,13 @@ This is a workspace with two sibling Maven projects (there is no root pom):
   - `aos-boot-application` — the **only runnable/deployable unit** (`AosBootApplication` + profile ymls, `-exec` classified jar, no sample code). One jar serves every role: the launch argument `--aos.rendezvous.subject.listener=<ROLE>` decides what an instance is, and production runs one folder per role with role-specific arguments (managed by an external service-manager program).
   - `aos-boot-scheduler` — **library module** for the scheduler role: beans exist only when launched with listener `SCH` (`SchedulerConfiguration` gate), so scheduled work cannot leak into other roles. The SCH role must be launched with FT enabled (single active) and usually `--spring.main.web-application-type=none`. Spring `@Scheduled` still runs on FT standbys — every periodic job must start with a `RendezvousSubscriber.isActive()` guard.
   - `aos-boot-samples` — demo handlers (`SampleCommands`, `EqpCommands`), REST gateway sample (`EqpApiController`), seed data. Excluded from the production artifact.
-- `tibrv-stub/` — standalone project producing a fake `com.tibco.tibrv:tibrvj:8.4.5`. Deliberately **outside the aos-boot reactor** so a normal build can never shadow a real tibrvj. Two roles: compile-only API signatures, plus an in-memory single-JVM RV simulation (subject matching, DQ round-robin, `_INBOX` request/reply) so the app actually runs without TIBCO.
+- `tibrv-stub/` — standalone project producing a fake `com.tibco.tibrv:tibrvnative:8.4.5`. Deliberately **outside the aos-boot reactor** so a normal build can never shadow the company's real `tibrvnative.jar`. Two roles: compile-only API signatures, plus an in-memory single-JVM RV simulation (subject matching, DQ round-robin, `_INBOX` request/reply) so the app actually runs without TIBCO.
 
 Detailed docs (keep them updated when behavior changes): `aos-boot/README.md` (English, feature reference), `aos-boot/USAGE.md` (Korean, config reference + production adoption checklist), `tibrv-stub/README.md`.
 
 ## Build and run
 
-`tibrvj.jar` is proprietary and not on Maven Central — nothing compiles until the stub (or a real jar) is in the local repo:
+`tibrvnative.jar` is proprietary and not on Maven Central — nothing compiles until the stub (or the company JAR) is in the local repo:
 
 ```bash
 mvn -f tibrv-stub/pom.xml clean install    # once per machine
@@ -29,7 +29,7 @@ mvn -f aos-boot/pom.xml package            # aos-boot-application-*-exec.jar = p
 - There are **no tests yet** (`src/test` is empty everywhere); verification is done by running the app against the stub.
 - Run the demo (samples included): `mvn -f aos-boot/pom.xml -pl aos-boot-samples spring-boot:run`
 - The stub bus is **single-JVM only**. Multi-instance behavior (two DQ members, FT failover) requires a real rvd, or two Run Configurations in an IDE won't share the stub bus — see README "Run two DQ members in Eclipse" (real RV needed for cross-process).
-- Startup log `[tibrvj-stub]` means the stub is on the classpath — must never appear in production logs.
+- Startup log `[tibrvnative-stub]` means the stub is on the classpath — must never appear in production logs. The `real` profile also rejects it through `aos.rendezvous.require-native=true`.
 
 ### tibrv-stub maintenance rule
 

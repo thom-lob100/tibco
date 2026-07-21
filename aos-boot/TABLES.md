@@ -25,12 +25,14 @@
 
 `persistent = true`로 선언된 command의 메시지를 **처리 전에** 저장해 두는 큐.
 처리에 실패해도 (JVM이 죽어도) 행이 남아 있어 백그라운드 폴러가 재시도한다.
-여러 인스턴스가 같은 테이블을 공유해도 안전하다 (조건부 UPDATE로 행을 선점).
+같은 listener(DQ/FT 멤버) 인스턴스는 조건부 UPDATE로 행을 안전하게 공유한다. 서로 다른
+listener 역할은 `listener` 컬럼으로 격리되므로 다른 역할의 폴러가 재처리 행을 선점하지 않는다.
 
 | 컬럼 | 타입(H2) | NULL | 설명 |
 |---|---|---|---|
 | `id` | BIGINT IDENTITY | N | PK |
 | `command` | VARCHAR(100) | N | subject 마지막 요소 (어느 핸들러로 갈지) |
+| `listener` | VARCHAR(100) | N | 수신 역할. 이 역할의 폴러만 행을 claim한다 |
 | `subject` | VARCHAR(500) | N | 수신 당시 subject 원문 |
 | `payload` | CLOB | N | 메시지 필드의 JSON 직렬화 |
 | `status` | VARCHAR(20) | N | `PENDING`(대기) \| `PROCESSING`(처리 중) \| `FAILED`(dead letter). 처리 성공한 행은 **삭제**되므로 완료 상태값은 없다 |
@@ -44,7 +46,19 @@
 **필수 인덱스** (폴러가 주기적으로 조회하는 조건):
 
 ```sql
-CREATE INDEX idx_rv_command_queue_poll ON rv_command_queue (status, next_attempt_at);
+CREATE INDEX idx_rv_command_queue_poll ON rv_command_queue (listener, status, next_attempt_at);
+```
+
+**기존 운영 테이블 마이그레이션**: 배포 전에 DBA가 아래 순서로 적용한다. 기존 미완료 행은
+어느 역할의 것인지 자동 판별할 수 없으므로, 해당 행을 먼저 처리하거나 올바른 listener 값을
+확정해 채운다.
+
+```sql
+ALTER TABLE rv_command_queue ADD listener VARCHAR2(100 CHAR);
+UPDATE rv_command_queue SET listener = '<ROLE>' WHERE listener IS NULL;
+ALTER TABLE rv_command_queue MODIFY listener NOT NULL;
+DROP INDEX idx_rv_command_queue_poll;
+CREATE INDEX idx_rv_command_queue_poll ON rv_command_queue (listener, status, next_attempt_at);
 ```
 
 운영 참고 (USAGE.md §12에 상세):
@@ -52,7 +66,7 @@ CREATE INDEX idx_rv_command_queue_poll ON rv_command_queue (status, next_attempt
 ```sql
 SELECT status, COUNT(*) FROM rv_command_queue GROUP BY status;       -- 적체 확인
 SELECT * FROM rv_command_queue WHERE status = 'FAILED';              -- dead letter 조회
-UPDATE rv_command_queue SET status='PENDING', attempts=0 WHERE id=?; -- 수동 재처리
+UPDATE rv_command_queue SET status='PENDING', attempts=0 WHERE id=? AND listener=?; -- 수동 재처리
 ```
 
 성공한 행은 즉시 삭제되므로 평상시 테이블은 작게 유지된다 — 별도 보관 정책이 필요한

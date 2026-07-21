@@ -17,6 +17,12 @@ public class RendezvousProperties {
     private String daemon;
 
     /**
+     * Rejects the development stub at startup. Enable this for every real company
+     * deployment; the real {@code tibrvnative.jar} reports a native implementation.
+     */
+    private boolean requireNative = false;
+
+    /**
      * Sender element stamped on outbound subjects; null auto-detects the machine name
      * (per team convention the sender identifies the sending host). Override per
      * instance with {@code --aos.rendezvous.sender-name=...} when several instances

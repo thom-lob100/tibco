@@ -12,15 +12,16 @@
         all work WITHIN one JVM, so application logic can be exercised on machines without a TIBCO
         install. It cannot talk to a real rvd or other processes; a warning is printed on Tibrv.open.
 
-        Coordinates intentionally match the real artifact (com.tibco.tibrv:tibrvj:8.4.5) so aos-boot's
+        Coordinates intentionally match the real artifact (com.tibco.tibrv:tibrvnative:8.4.5) so aos-boot's
         dependency resolves. This project is deliberately OUTSIDE the aos-boot reactor — developers with
         a real TIBCO install must install the genuine jar under the same coordinates for real runs.
     -->
     <groupId>com.tibco.tibrv</groupId>
-    <artifactId>tibrvj</artifactId>
+    <!-- Matches the company's supported JNI implementation, tibrvnative.jar. -->
+    <artifactId>tibrvnative</artifactId>
     <version>8.4.5</version>
     <packaging>jar</packaging>
-    <name>tibrvj (compile-only API stub)</name>
+    <name>tibrvnative (development API stub)</name>
 
     <properties>
         <maven.compiler.release>25</maven.compiler.release>

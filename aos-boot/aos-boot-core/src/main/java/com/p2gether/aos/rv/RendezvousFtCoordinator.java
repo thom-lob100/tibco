@@ -3,8 +3,8 @@ package com.p2gether.aos.rv;
 import com.tibco.tibrv.Tibrv;
 import com.tibco.tibrv.TibrvDispatcher;
 import com.tibco.tibrv.TibrvException;
-import com.tibco.tibrv.TibrvFtCallback;
 import com.tibco.tibrv.TibrvFtMember;
+import com.tibco.tibrv.TibrvFtMemberCallback;
 import com.tibco.tibrv.TibrvQueue;
 import com.tibco.tibrv.TibrvRvdTransport;
 import jakarta.annotation.PostConstruct;
@@ -29,7 +29,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "aos.rendezvous.ft.enabled", havingValue = "true")
-public class RendezvousFtCoordinator implements TibrvFtCallback {
+public class RendezvousFtCoordinator implements TibrvFtMemberCallback {
 
     private final RendezvousProperties properties;
     private final RendezvousSubscriber subscriber;

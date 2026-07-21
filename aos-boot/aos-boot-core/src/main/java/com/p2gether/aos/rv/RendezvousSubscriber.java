@@ -53,6 +53,10 @@ public class RendezvousSubscriber implements TibrvMsgCallback {
         RendezvousProperties.Dq dq = properties.getDq();
         try {
             Tibrv.open(Tibrv.IMPL_NATIVE);
+            if (properties.isRequireNative() && !Tibrv.isNativeImpl()) {
+                throw new IllegalStateException(
+                        "A native TIBCO Rendezvous implementation is required; tibrvnative.jar was not loaded");
+            }
             transport = new TibrvRvdTransport(
                     properties.getService(), properties.getNetwork(), properties.getDaemon());
             dqTransport = new TibrvCmQueueTransport(

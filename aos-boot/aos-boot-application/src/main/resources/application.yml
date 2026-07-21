@@ -47,6 +47,8 @@ aos:
       # define that role under aos.rendezvous.destinations and name it here.
       destination: self
   rendezvous:
+    # Production profile sets this true, which rejects the local development stub.
+    require-native: false
     service: "23119"
     network: ";239.11.19.99"
     daemon: "tcp:7500"
